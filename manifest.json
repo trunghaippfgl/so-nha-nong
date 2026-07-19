@@ -1,0 +1,17 @@
+{
+  "name": "Sổ Nhà Nông",
+  "short_name": "Sổ Nhà Nông",
+  "description": "Quản lý bán hàng - Kho - Công nợ",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#171310",
+  "theme_color": "#171310",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
