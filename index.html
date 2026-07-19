@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Sổ Nhà Nông</title>
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#171310">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600;700&family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -228,7 +232,10 @@
       <div class="brand">🌾 Sổ Nhà Nông</div>
       <div class="sub" id="storeGreeting">Xin chào</div>
     </div>
-    <div class="today" id="todayDate"></div>
+    <div style="text-align:right;">
+      <div class="today" id="todayDate"></div>
+      <button onclick="doLogout()" style="margin-top:6px; background:none; border:none; color:var(--rust-500); font-size:12px; font-family:inherit; cursor:pointer; text-decoration:underline;">Thoát</button>
+    </div>
   </div>
 
   <!-- ---- TAB: BÁN HÀNG (POS) ---- -->
@@ -490,6 +497,10 @@ function doLogin(){
       err.textContent = 'Lỗi đăng nhập: ' + e.message;
     }
   });
+}
+function doLogout(){
+  if (!confirm('Bạn có chắc muốn thoát tài khoản?')) return;
+  auth.signOut();
 }
 
 auth.onAuthStateChanged(user => {
