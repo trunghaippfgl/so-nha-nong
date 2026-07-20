@@ -205,6 +205,22 @@
   #loginScreen .box{ width:100%; max-width:340px; }
   #loginErr{ color:var(--rust-500); font-size:13px; margin-top:8px; min-height:16px; }
 </style>
+  /* --- Hóa đơn / Phiếu bán hàng --- */
+  #invoiceArea{ display:none; }
+  .inv-box{ background:#fff; color:#1a1a1a; padding:24px; font-family:'Be Vietnam Pro',sans-serif; }
+  .inv-box h2{ font-family:'Zilla Slab',serif; font-size:20px; margin-bottom:2px; }
+  .inv-meta{ font-size:13px; color:#555; margin-bottom:14px; }
+  .inv-row{ display:flex; justify-content:space-between; font-size:13px; margin-bottom:2px; }
+  .inv-table{ width:100%; border-collapse:collapse; margin:14px 0; font-size:13px; }
+  .inv-table th, .inv-table td{ border-bottom:1px solid #ddd; padding:6px 4px; text-align:left; }
+  .inv-table th:last-child, .inv-table td:last-child{ text-align:right; }
+  .inv-total{ display:flex; justify-content:space-between; font-size:15px; font-weight:700; margin-top:8px; border-top:2px solid #1a1a1a; padding-top:8px; }
+  .inv-footer{ margin-top:24px; font-size:12px; color:#777; text-align:center; }
+  @media print{
+    body *{ visibility:hidden; }
+    #invoiceArea, #invoiceArea *{ visibility:visible; }
+    #invoiceArea{ display:block !important; position:absolute; top:0; left:0; width:100%; }
+  }
 </head>
 <body>
 
@@ -437,6 +453,18 @@
     </div>
   </div>
 </div>
+<!-- ============ MODAL: HÓA ĐƠN ============ -->
+<div class="overlay" id="invoiceModal">
+  <div class="sheet" style="max-width:480px; padding:0; background:transparent;">
+    <div style="display:flex; justify-content:flex-end; gap:8px; padding:12px 12px 0;">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('invoiceModal')">Đóng</button>
+      <button class="btn btn-primary btn-sm" onclick="printInvoice()">🖨️ In / Lưu PDF</button>
+    </div>
+    <div id="invoiceArea">
+      <div class="inv-box" id="invoiceContent"></div>
+    </div>
+  </div>
+</div>
 
 <!-- ============ FIREBASE ============ -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -485,6 +513,7 @@ function slugify(str){
 }
 let storeRef = null;
 let pendingStoreName = '';
+let currentStoreName = 'Cửa hàng';
 
 function doLogin(){
   const username = document.getElementById('loginEmail').value.trim();
@@ -522,6 +551,7 @@ auth.onAuthStateChanged(user => {
     document.getElementById('todayDate').textContent = todayStr();
     storeRef.get().then(doc => {
       const name = doc.exists ? doc.data().storeName : (pendingStoreName || 'Chủ cửa hàng');
+      currentStoreName = name;
       document.getElementById('storeGreeting').textContent = 'Xin chào, ' + name;
     });
     listenProducts();
@@ -806,6 +836,39 @@ function onPosCustomerChange(){
   const has = !!document.getElementById('posCustomer').value;
   document.getElementById('posDebtOption').style.display = has ? 'block' : 'none';
 }
+function renderInvoice(sale){
+  const d = sale.createdAt && sale.createdAt.toDate ? sale.createdAt.toDate() : new Date();
+  const dateStr = d.toLocaleDateString('vi-VN') + ' ' + d.toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'});
+  const rows = (sale.items||[]).map(it => `
+    <tr>
+      <td>${it.name}</td>
+      <td>${it.qty} ${it.unit}</td>
+      <td>${money(it.price)}</td>
+      <td>${money(it.price*it.qty)}</td>
+    </tr>
+  `).join('');
+  document.getElementById('invoiceContent').innerHTML = `
+    <h2>🌾 ${currentStoreName}</h2>
+    <div class="inv-meta">Phiếu bán hàng · ${dateStr}</div>
+    <div class="inv-row"><span>Khách hàng:</span><b>${sale.customerName || 'Khách lẻ'}</b></div>
+    ${sale.isDebt ? '<div class="inv-row"><span>Hình thức:</span><b>Ghi nợ</b></div>' : ''}
+    <table class="inv-table">
+      <thead><tr><th>Sản phẩm</th><th>SL</th><th>Đơn giá</th><th>Thành tiền</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="inv-total"><span>Tổng cộng</span><span>${money(sale.total)}</span></div>
+    <div class="inv-footer">Cảm ơn quý khách đã ủng hộ! · Phiếu này không phải hóa đơn giá trị gia tăng.</div>
+  `;
+  openModal('invoiceModal');
+}
+function printInvoice(){
+  window.print();
+}
+function reprintSale(saleId){
+  const sale = sales.find(s => s.id === saleId);
+  if (!sale) return;
+  renderInvoice(sale);
+}
 
 function checkout(){
   if (!cart.length) return;
@@ -834,7 +897,11 @@ function checkout(){
   }
 
   batch.commit().then(() => {
-    alert('Đã lưu hoá đơn: ' + money(total));
+    renderInvoice({
+      items: cart.map(c => ({ productId:c.productId, name:c.name, price:c.price, qty:c.qty, unit:c.unit })),
+      total, customerName: customer ? customer.name : 'Khách lẻ', isDebt: !!isDebt,
+      createdAt: { toDate: () => new Date() }
+    });
     cart = [];
     document.getElementById('posCustomer').value = '';
     document.getElementById('posIsDebt').checked = false;
@@ -965,7 +1032,10 @@ function renderReports(){
         <div class="prod-name">${s.customerName || 'Khách lẻ'}</div>
         <div class="prod-meta">${(s.items||[]).length} sản phẩm ${s.isDebt ? '· Ghi nợ' : ''}</div>
       </div>
-      <div class="mono">${money(s.total)}</div>
+      <div style="text-align:right;">
+        <div class="mono">${money(s.total)}</div>
+        <button class="btn btn-sm btn-ghost" style="margin-top:4px;" onclick="reprintSale('${s.id}')">🖨️ In</button>
+      </div>
     </div>
   `).join('') || '<div class="empty-state">Chưa có hoá đơn nào.</div>';
 }
