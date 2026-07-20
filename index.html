@@ -705,6 +705,8 @@ auth.onAuthStateChanged(user => {
   } else {
     storeRef = null;
     document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('trialExpiredScreen').style.display = 'none';
   }
 });
 
