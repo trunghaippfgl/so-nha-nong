@@ -219,6 +219,7 @@
   .inv-table td{ padding:7px 4px; border-bottom:1px solid #eee2cf; text-align:left; }
   .inv-table th:last-child, .inv-table td:last-child{ text-align:right; }
   .inv-total{ display:flex; justify-content:space-between; font-size:17px; font-weight:700; margin-top:10px; border-top:2px solid #8a5a12; padding-top:10px; color:#8a5a12; }
+  .inv-words{ font-size:12px; font-style:italic; color:#8a7a5f; margin-top:4px; }
   .inv-footer{ margin-top:20px; font-size:12px; color:#8a7a5f; text-align:center; }
    #invoiceModal{ align-items:stretch; }
    #invoiceModal .sheet{
@@ -522,7 +523,38 @@ let sales = [];
 let cart = []; // {productId, name, price, qty, unit}
 let editingProductId = null;
 let debtPayments = [];
-
+function numberToVietnameseWords(number){
+  if (number === 0) return "Không đồng";
+  const digits = ["không","một","hai","ba","bốn","năm","sáu","bảy","tám","chín"];
+  function readTriple(n, showHundred){
+    let s = "";
+    const hundred = Math.floor(n/100);
+    const ten = Math.floor((n%100)/10);
+    const unit = n%10;
+    if (hundred > 0 || showHundred){ s += digits[hundred] + " trăm "; }
+    if (ten === 0){ if (unit > 0 && (hundred>0||showHundred)) s += "linh "; }
+    else if (ten === 1){ s += "mười "; }
+    else { s += digits[ten] + " mươi "; }
+    if (unit === 1 && ten > 1){ s += "mốt "; }
+    else if (unit === 5 && ten > 0){ s += "lăm "; }
+    else if (unit > 0){ s += digits[unit] + " "; }
+    return s.trim();
+  }
+  const units = ["", "nghìn", "triệu", "tỷ"];
+  let n = Math.floor(Math.abs(number));
+  if (n === 0) return "Không đồng";
+  const groups = [];
+  while (n > 0){ groups.push(n % 1000); n = Math.floor(n/1000); }
+  let result = "";
+  for (let i = groups.length-1; i >= 0; i--){
+    if (groups[i] === 0) continue;
+    const showHundred = i < groups.length-1;
+    result += readTriple(groups[i], showHundred) + " " + units[i] + " ";
+  }
+  result = result.replace(/\s+/g, ' ').trim();
+  result = result.charAt(0).toUpperCase() + result.slice(1);
+  return result + " đồng";
+}
 function money(n){
   return (Math.round(n||0)).toLocaleString('vi-VN') + 'đ';
 }
@@ -914,6 +946,7 @@ function renderInvoice(sale){
       <tbody>${rows}</tbody>
     </table>
     <div class="inv-total"><span>Tổng cộng</span><span>${money(sale.total)}</span></div>
+    <div class="inv-words">Bằng chữ: ${numberToVietnameseWords(sale.total)}</div>
     <div class="inv-footer">Cảm ơn quý khách đã ủng hộ! 🌾</div>
   `;
   openModal('invoiceModal');
