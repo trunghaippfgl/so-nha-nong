@@ -295,9 +295,13 @@
       </select>
       <div id="posDebtOption" style="display:none; margin-top:10px;">
         <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-          <input type="checkbox" id="posIsDebt" style="width:auto;">
+          <input type="checkbox" id="posIsDebt" style="width:auto;" onchange="onPosDebtToggle()">
           <span style="font-size:13px; color:var(--cream-100);">Ghi nợ (khách chưa trả hết)</span>
         </label>
+        <div id="posPartialPayWrap" style="display:none; margin-top:8px;">
+          <label>Khách trả trước (0 nếu chưa trả gì)</label>
+          <input id="posPaidNow" type="number" inputmode="numeric" placeholder="0">
+        </div>
       </div>
     </div>
 
@@ -949,6 +953,13 @@ function onPosCustomerChange(){
   const has = !!document.getElementById('posCustomer').value;
   document.getElementById('posDebtOption').style.display = has ? 'block' : 'none';
 }
+function onPosDebtToggle(){
+  const wrap = document.getElementById('posPartialPayWrap');
+  wrap.style.display = document.getElementById('posIsDebt').checked ? 'block' : 'none';
+  if (!document.getElementById('posIsDebt').checked){
+    document.getElementById('posPaidNow').value = '';
+  }
+}
 function renderInvoice(sale){
   const d = sale.createdAt && sale.createdAt.toDate ? sale.createdAt.toDate() : new Date();
   const dateStr = d.toLocaleDateString('vi-VN') + ' ' + d.toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'});
@@ -969,13 +980,18 @@ function renderInvoice(sale){
     <div class="inv-divider"></div>
     <div class="inv-meta">Phiếu bán hàng · ${dateStr}</div>
     <div class="inv-row"><span>Khách hàng:</span><b>${sale.customerName || 'Khách lẻ'}</b></div>
-    ${sale.isDebt ? '<div class="inv-row"><span>Hình thức:</span><b>Ghi nợ</b></div>' : ''}
     <table class="inv-table">
       <thead><tr><th>Sản phẩm</th><th>SL</th><th>Đơn giá</th><th>Thành tiền</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
-    <div class="inv-total"><span>Tổng cộng</span><span>${money(sale.total)}</span></div>
+    <div class="inv-total"><span>Tổng tiền hàng</span><span>${money(sale.total)}</span></div>
+    ${sale.isDebt ? `
+    <div class="inv-row" style="margin-top:8px;"><span>Đã thanh toán:</span><b style="color:#4a7a3a;">${money(sale.paidAmount||0)}</b></div>
+    <div class="inv-row"><span>Còn nợ lại:</span><b style="color:#b5533c;">${money(sale.debtAmount||0)}</b></div>
+    <div class="inv-words">Số tiền còn nợ bằng chữ: ${numberToVietnameseWords(sale.debtAmount||0)}</div>
+    ` : `
     <div class="inv-words">Bằng chữ: ${numberToVietnameseWords(sale.total)}</div>
+    `}
     <div class="inv-footer">Cảm ơn quý khách đã ủng hộ! 🌾</div>
   `;
   openModal('invoiceModal');
@@ -995,12 +1011,16 @@ function checkout(){
   const customerId = document.getElementById('posCustomer').value || null;
   const customer = customers.find(c => c.id === customerId);
   const isDebt = document.getElementById('posIsDebt').checked && customerId;
+  const paidNow = isDebt ? (parseFloat(document.getElementById('posPaidNow').value) || 0) : total;
+  const debtAmount = isDebt ? Math.max(0, total - paidNow) : 0;
 
   const batch = db.batch();
   const saleRef = storeRef.collection('sales').doc();
   batch.set(saleRef, {
     items: cart.map(c => ({ productId:c.productId, name:c.name, price:c.price, qty:c.qty, unit:c.unit })),
     total,
+    paidAmount: paidNow,
+    debtAmount,
     customerId: customerId || null,
     customerName: customer ? customer.name : 'Khách lẻ',
     isDebt: !!isDebt,
@@ -1010,21 +1030,24 @@ function checkout(){
     const pRef = storeRef.collection('products').doc(c.productId);
     batch.update(pRef, { stock: firebase.firestore.FieldValue.increment(-c.qty) });
   });
-  if (isDebt){
+  if (isDebt && debtAmount > 0){
     const cRef = storeRef.collection('customers').doc(customerId);
-    batch.update(cRef, { debt: firebase.firestore.FieldValue.increment(total) });
+    batch.update(cRef, { debt: firebase.firestore.FieldValue.increment(debtAmount) });
   }
 
   batch.commit().then(() => {
     renderInvoice({
       items: cart.map(c => ({ productId:c.productId, name:c.name, price:c.price, qty:c.qty, unit:c.unit })),
-      total, customerName: customer ? customer.name : 'Khách lẻ', isDebt: !!isDebt,
+      total, paidAmount: paidNow, debtAmount,
+      customerName: customer ? customer.name : 'Khách lẻ', isDebt: !!isDebt,
       createdAt: { toDate: () => new Date() }
     });
     cart = [];
     document.getElementById('posCustomer').value = '';
     document.getElementById('posIsDebt').checked = false;
     document.getElementById('posDebtOption').style.display = 'none';
+    document.getElementById('posPartialPayWrap').style.display = 'none';
+    document.getElementById('posPaidNow').value = '';
     renderCart();
   }).catch(e => alert('Lỗi lưu hoá đơn: ' + e.message));
 }
@@ -1081,6 +1104,7 @@ function confirmPayDebt(){
   const amount = parseFloat(document.getElementById('payDebtAmount').value) || 0;
   if (!amount){ alert('Nhập số tiền.'); return; }
   const customer = customers.find(c => c.id === id);
+  const debtBefore = customer ? (customer.debt||0) : 0;
   const batch = db.batch();
   batch.update(storeRef.collection('customers').doc(id), {
     debt: firebase.firestore.FieldValue.increment(-amount)
@@ -1091,8 +1115,25 @@ function confirmPayDebt(){
     amount,
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   });
-  batch.commit().then(() => closeModal('payDebtModal'))
-    .catch(e => alert('Lỗi: ' + e.message));
+  batch.commit().then(() => {
+    closeModal('payDebtModal');
+    document.getElementById('invoiceContent').innerHTML = `
+      <div class="inv-store-name">🌾 ${currentStoreName}</div>
+      <div class="inv-store-info">
+        ${currentStorePhone ? 'SĐT: ' + currentStorePhone + '<br>' : ''}
+        ${currentStoreAddress ? 'Địa chỉ: ' + currentStoreAddress : ''}
+      </div>
+      <div class="inv-divider"></div>
+      <div class="inv-meta">Phiếu thu nợ · ${new Date().toLocaleDateString('vi-VN')} ${new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}</div>
+      <div class="inv-row"><span>Khách hàng:</span><b>${customer ? customer.name : ''}</b></div>
+      <div class="inv-row"><span>Nợ trước khi thu:</span><b>${money(debtBefore)}</b></div>
+      <div class="inv-total"><span>Số tiền đã thu</span><span>${money(amount)}</span></div>
+      <div class="inv-words">Bằng chữ: ${numberToVietnameseWords(amount)}</div>
+      <div class="inv-row" style="margin-top:10px;"><span>Còn nợ lại:</span><b style="color:#b5533c;">${money(Math.max(0,debtBefore-amount))}</b></div>
+      <div class="inv-footer">Cảm ơn quý khách! 🌾</div>
+    `;
+    openModal('invoiceModal');
+  }).catch(e => alert('Lỗi: ' + e.message));
 }
 
 // ---------- BÁO CÁO ----------
@@ -1108,7 +1149,7 @@ function renderReports(){
   sales.forEach(s => {
     if (!s.createdAt || !s.createdAt.toDate) return;
     const d = s.createdAt.toDate();
-    const cashPart = s.isDebt ? 0 : (s.total || 0); // đơn ghi nợ chưa thu tiền mặt lúc bán
+    const cashPart = s.isDebt ? (s.paidAmount || 0) : (s.total || 0);
     if (d >= startToday){ todayRev += s.total || 0; todayCollected += cashPart; }
     if (d >= startMonth){
       monthRev += s.total || 0;
