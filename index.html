@@ -252,6 +252,9 @@
     <div style="margin-top:14px;">
       <button class="btn btn-primary" onclick="doLogin()">Đăng nhập</button>
     </div>
+    <div style="margin-top:10px; text-align:center;">
+      <button onclick="doRegister()" style="background:none; border:none; color:var(--cream-500); font-size:13px; font-family:inherit; cursor:pointer; text-decoration:underline;">Chưa có tài khoản? Đăng ký cửa hàng mới</button>
+    </div>
   </div>
 </div>
 
@@ -607,18 +610,38 @@ function doLogin(){
   pendingStoreName = username;
   auth.signInWithEmailAndPassword(internalEmail, pass).catch(e => {
     if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-login-credentials' || e.code === 'auth/invalid-credential'){
-      auth.createUserWithEmailAndPassword(internalEmail, pass).then(cred => {
-        db.collection('stores').doc(cred.user.uid).set({
-          storeName: username,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-          trialStartAt: firebase.firestore.FieldValue.serverTimestamp(),
-          paid: false
-        });
-      }).catch(e2 => {
-        err.textContent = 'Lỗi đăng nhập: ' + e2.message;
-      });
+      err.textContent = 'Không tìm thấy cửa hàng "' + username + '". Kiểm tra lại tên đăng nhập, hoặc bấm "Đăng ký cửa hàng mới" nếu đây là lần đầu sử dụng.';
+    } else if (e.code === 'auth/wrong-password'){
+      err.textContent = 'Sai mật khẩu.';
     } else {
       err.textContent = 'Lỗi đăng nhập: ' + e.message;
+    }
+  });
+}
+
+function doRegister(){
+  const username = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const err = document.getElementById('loginErr');
+  err.textContent = '';
+  if (!username || !pass) { err.textContent = 'Nhập đủ tên cửa hàng và mật khẩu để đăng ký.'; return; }
+  if (pass.length < 6){ err.textContent = 'Mật khẩu cần ít nhất 6 ký tự.'; return; }
+  if (!confirm('Xác nhận tạo cửa hàng mới với tên "' + username + '"?\n\nNếu đây KHÔNG phải lần đầu bạn dùng app, đừng bấm OK — hãy dùng nút "Đăng nhập" thay vì đăng ký, để tránh mất dữ liệu cũ.')) return;
+  const internalEmail = slugify(username) + '@so-nha-nong.local';
+  pendingStoreName = username;
+  auth.createUserWithEmailAndPassword(internalEmail, pass).then(cred => {
+    storeRef = db.collection('stores').doc(cred.user.uid);
+    storeRef.set({
+      storeName: username,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      trialStartAt: firebase.firestore.FieldValue.serverTimestamp(),
+      paid: false
+    });
+  }).catch(e => {
+    if (e.code === 'auth/email-already-in-use'){
+      err.textContent = 'Tên cửa hàng "' + username + '" đã tồn tại. Vui lòng dùng nút "Đăng nhập" thay vì đăng ký.';
+    } else {
+      err.textContent = 'Lỗi đăng ký: ' + e.message;
     }
   });
 }
