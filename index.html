@@ -205,16 +205,21 @@
   #loginScreen .box{ width:100%; max-width:340px; }
   #loginErr{ color:var(--rust-500); font-size:13px; margin-top:8px; min-height:16px; }
   /* --- Hóa đơn / Phiếu bán hàng --- */
-  #invoiceArea{ display:none; }
-  .inv-box{ background:#fff; color:#1a1a1a; padding:24px; font-family:'Be Vietnam Pro',sans-serif; }
-  .inv-box h2{ font-family:'Zilla Slab',serif; font-size:20px; margin-bottom:2px; }
-  .inv-meta{ font-size:13px; color:#555; margin-bottom:14px; }
-  .inv-row{ display:flex; justify-content:space-between; font-size:13px; margin-bottom:2px; }
+  .inv-box{
+    background:#fffdf8; color:#2a2118; padding:22px 20px;
+    font-family:'Be Vietnam Pro',sans-serif; border-radius:14px;
+  }
+  .inv-box .inv-store-name{ font-family:'Zilla Slab',serif; font-size:20px; font-weight:700; color:#8a5a12; }
+  .inv-box .inv-store-info{ font-size:12px; color:#6b5d47; margin-top:2px; line-height:1.5; }
+  .inv-divider{ border-top:1px dashed #c9bfa9; margin:14px 0; }
+  .inv-meta{ font-size:13px; color:#6b5d47; margin-bottom:10px; }
+  .inv-row{ display:flex; justify-content:space-between; font-size:13px; margin-bottom:3px; }
   .inv-table{ width:100%; border-collapse:collapse; margin:14px 0; font-size:13px; }
-  .inv-table th, .inv-table td{ border-bottom:1px solid #ddd; padding:6px 4px; text-align:left; }
+  .inv-table th{ font-size:11px; text-transform:uppercase; color:#8a7a5f; padding:4px; text-align:left; border-bottom:1px solid #c9bfa9; }
+  .inv-table td{ padding:7px 4px; border-bottom:1px solid #eee2cf; text-align:left; }
   .inv-table th:last-child, .inv-table td:last-child{ text-align:right; }
-  .inv-total{ display:flex; justify-content:space-between; font-size:15px; font-weight:700; margin-top:8px; border-top:2px solid #1a1a1a; padding-top:8px; }
-  .inv-footer{ margin-top:24px; font-size:12px; color:#777; text-align:center; }
+  .inv-total{ display:flex; justify-content:space-between; font-size:17px; font-weight:700; margin-top:10px; border-top:2px solid #8a5a12; padding-top:10px; color:#8a5a12; }
+  .inv-footer{ margin-top:20px; font-size:12px; color:#8a7a5f; text-align:center; }
   @media print{
     body *{ visibility:hidden; }
     #invoiceArea, #invoiceArea *{ visibility:visible; }
@@ -250,6 +255,7 @@
     </div>
     <div style="text-align:right;">
       <div class="today" id="todayDate"></div>
+      <button onclick="openStoreSettings()" style="margin-top:6px; margin-right:10px; background:none; border:none; color:var(--wheat-400); font-size:12px; font-family:inherit; cursor:pointer; text-decoration:underline;">Cài đặt</button>
       <button onclick="doLogout()" style="margin-top:6px; background:none; border:none; color:var(--rust-500); font-size:12px; font-family:inherit; cursor:pointer; text-decoration:underline;">Thoát</button>
     </div>
   </div>
@@ -456,12 +462,30 @@
 <!-- ============ MODAL: HÓA ĐƠN ============ -->
 <div class="overlay" id="invoiceModal">
   <div class="sheet" style="max-width:480px; padding:0; background:transparent;">
-    <div style="display:flex; justify-content:flex-end; gap:8px; padding:12px 12px 0;">
-      <button class="btn btn-ghost btn-sm" onclick="closeModal('invoiceModal')">Đóng</button>
-      <button class="btn btn-primary btn-sm" onclick="printInvoice()">🖨️ In / Lưu PDF</button>
+    <div style="padding:12px 12px 0;">
+      <div style="text-align:center; font-size:12px; color:var(--cream-500); margin-bottom:10px;">📸 Chụp màn hình để lưu/gửi Zalo cho khách</div>
+      <div style="display:flex; justify-content:flex-end; gap:8px;">
+        <button class="btn btn-ghost btn-sm" onclick="closeModal('invoiceModal')">Đóng</button>
+      </div>
     </div>
     <div id="invoiceArea">
       <div class="inv-box" id="invoiceContent"></div>
+    </div>
+  </div>
+</div>
+<!-- ============ MODAL: CÀI ĐẶT CỬA HÀNG ============ -->
+<div class="overlay" id="storeSettingsModal">
+  <div class="sheet">
+    <button class="sheet-close" onclick="closeModal('storeSettingsModal')">✕</button>
+    <h3>Thông tin cửa hàng</h3>
+    <label>Tên cửa hàng</label>
+    <input id="settingStoreName" placeholder="VD: ĐLNN Xuân Thành">
+    <label>Số điện thoại</label>
+    <input id="settingStorePhone" placeholder="VD: 0905 123 456">
+    <label>Địa chỉ</label>
+    <input id="settingStoreAddress" placeholder="VD: Thôn 1, xã Ayun Pa, Gia Lai">
+    <div style="margin-top:16px;">
+      <button class="btn btn-primary" onclick="saveStoreSettings()">Lưu thông tin</button>
     </div>
   </div>
 </div>
@@ -514,6 +538,8 @@ function slugify(str){
 let storeRef = null;
 let pendingStoreName = '';
 let currentStoreName = 'Cửa hàng';
+let currentStorePhone = '';
+let currentStoreAddress = '';
 
 function doLogin(){
   const username = document.getElementById('loginEmail').value.trim();
@@ -542,6 +568,25 @@ function doLogout(){
   if (!confirm('Bạn có chắc muốn thoát tài khoản?')) return;
   auth.signOut();
 }
+function openStoreSettings(){
+  document.getElementById('settingStoreName').value = currentStoreName;
+  document.getElementById('settingStorePhone').value = currentStorePhone;
+  document.getElementById('settingStoreAddress').value = currentStoreAddress;
+  openModal('storeSettingsModal');
+}
+function saveStoreSettings(){
+  const name = document.getElementById('settingStoreName').value.trim();
+  const phone = document.getElementById('settingStorePhone').value.trim();
+  const address = document.getElementById('settingStoreAddress').value.trim();
+  if (!name){ alert('Nhập tên cửa hàng.'); return; }
+  storeRef.set({ storeName:name, phone, address }, { merge:true }).then(() => {
+    currentStoreName = name;
+    currentStorePhone = phone;
+    currentStoreAddress = address;
+    document.getElementById('storeGreeting').textContent = 'Xin chào, ' + name;
+    closeModal('storeSettingsModal');
+  }).catch(e => alert('Lỗi: ' + e.message));
+}
 
 auth.onAuthStateChanged(user => {
   if (user){
@@ -552,6 +597,8 @@ auth.onAuthStateChanged(user => {
     storeRef.get().then(doc => {
       const name = doc.exists ? doc.data().storeName : (pendingStoreName || 'Chủ cửa hàng');
       currentStoreName = name;
+      currentStorePhone = doc.exists ? (doc.data().phone || '') : '';
+      currentStoreAddress = doc.exists ? (doc.data().address || '') : '';
       document.getElementById('storeGreeting').textContent = 'Xin chào, ' + name;
     });
     listenProducts();
@@ -848,7 +895,12 @@ function renderInvoice(sale){
     </tr>
   `).join('');
   document.getElementById('invoiceContent').innerHTML = `
-    <h2>🌾 ${currentStoreName}</h2>
+    <div class="inv-store-name">🌾 ${currentStoreName}</div>
+    <div class="inv-store-info">
+      ${currentStorePhone ? 'SĐT: ' + currentStorePhone + '<br>' : ''}
+      ${currentStoreAddress ? 'Địa chỉ: ' + currentStoreAddress : ''}
+    </div>
+    <div class="inv-divider"></div>
     <div class="inv-meta">Phiếu bán hàng · ${dateStr}</div>
     <div class="inv-row"><span>Khách hàng:</span><b>${sale.customerName || 'Khách lẻ'}</b></div>
     ${sale.isDebt ? '<div class="inv-row"><span>Hình thức:</span><b>Ghi nợ</b></div>' : ''}
@@ -857,7 +909,7 @@ function renderInvoice(sale){
       <tbody>${rows}</tbody>
     </table>
     <div class="inv-total"><span>Tổng cộng</span><span>${money(sale.total)}</span></div>
-    <div class="inv-footer">Cảm ơn quý khách đã ủng hộ! · Phiếu này không phải hóa đơn giá trị gia tăng.</div>
+    <div class="inv-footer">Cảm ơn quý khách đã ủng hộ! 🌾</div>
   `;
   openModal('invoiceModal');
 }
