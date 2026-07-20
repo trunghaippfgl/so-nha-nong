@@ -194,7 +194,7 @@
 
   .empty-state{ text-align:center; padding:40px 20px; color:var(--cream-500); }
   .empty-state .ic{ font-size:34px; margin-bottom:8px; }
-
+  #trialExpiredScreen{ display:none; }
   #loginScreen{
     min-height:100vh; display:flex; flex-direction:column;
     align-items:center; justify-content:center; padding:24px;
@@ -354,6 +354,18 @@
   </div>
 
   <button class="fab" id="addProductFab" onclick="openAddProduct()">+</button>
+</div>
+<!-- ============ HẾT HẠN DÙNG THỬ ============ -->
+<div id="trialExpiredScreen" style="display:none; min-height:100vh; flex-direction:column; align-items:center; justify-content:center; padding:24px; text-align:center;">
+  <div style="font-size:44px; margin-bottom:8px;">⏰</div>
+  <h1 style="font-size:24px; color:var(--wheat-400); margin-bottom:10px;">Đã hết hạn dùng thử</h1>
+  <div style="font-size:14px; color:var(--cream-500); max-width:340px; margin-bottom:20px; line-height:1.6;">
+    Cửa hàng của bạn đã dùng thử 5 ngày miễn phí. Vui lòng liên hệ để tiếp tục sử dụng đầy đủ tính năng của Sổ Nhà Nông.
+  </div>
+  <div style="font-size:15px; color:var(--wheat-400); font-weight:600; margin-bottom:24px;">
+    📞 Liên hệ: 0905170184
+  </div>
+  <button class="btn btn-ghost" style="max-width:200px;" onclick="doLogout()">Đăng xuất</button>
 </div>
 
 <!-- ============ MODAL: THÊM/SỬA SẢN PHẨM ============ -->
@@ -591,7 +603,9 @@ function doLogin(){
       auth.createUserWithEmailAndPassword(internalEmail, pass).then(cred => {
         db.collection('stores').doc(cred.user.uid).set({
           storeName: username,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          trialStartAt: firebase.firestore.FieldValue.serverTimestamp(),
+          paid: false
         });
       }).catch(e2 => {
         err.textContent = 'Lỗi đăng nhập: ' + e2.message;
@@ -637,6 +651,22 @@ auth.onAuthStateChanged(user => {
       currentStorePhone = doc.exists ? (doc.data().phone || '') : '';
       currentStoreAddress = doc.exists ? (doc.data().address || '') : '';
       document.getElementById('storeGreeting').textContent = 'Xin chào, ' + name;
+
+      const data = doc.exists ? doc.data() : {};
+      const isPaid = data.paid === true;
+      const trialStart = data.trialStartAt && data.trialStartAt.toDate ? data.trialStartAt.toDate() : null;
+      let trialExpired = false;
+      if (!isPaid && trialStart){
+        const daysUsed = (new Date() - trialStart) / (1000*60*60*24);
+        if (daysUsed > 5) trialExpired = true;
+      }
+      if (trialExpired){
+        document.getElementById('app').style.display = 'none';
+        document.getElementById('trialExpiredScreen').style.display = 'flex';
+      } else {
+        document.getElementById('trialExpiredScreen').style.display = 'none';
+        document.getElementById('app').style.display = 'block';
+      }
     });
     listenProducts();
     listenCustomers();
@@ -645,7 +675,6 @@ auth.onAuthStateChanged(user => {
   } else {
     storeRef = null;
     document.getElementById('loginScreen').style.display = 'flex';
-    document.getElementById('app').style.display = 'none';
   }
 });
 
