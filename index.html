@@ -475,8 +475,16 @@ function todayStr(){
 }
 
 // ---------- AUTH ----------
-const OWNER_USERNAME = "ĐLNN Xuân Thành";
-const OWNER_INTERNAL_EMAIL = "dlnn-xuan-thanh@so-nha-nong.local"; // email ẩn, không cần nhớ
+function slugify(str){
+  let s = str.toLowerCase().trim();
+  s = s.replace(/đ/g, 'd');
+  s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  s = s.replace(/[^a-z0-9\s-]/g, '');
+  s = s.replace(/\s+/g, '-');
+  return s;
+}
+let storeRef = null;
+let pendingStoreName = '';
 
 function doLogin(){
   const username = document.getElementById('loginEmail').value.trim();
@@ -484,13 +492,16 @@ function doLogin(){
   const err = document.getElementById('loginErr');
   err.textContent = '';
   if (!username || !pass) { err.textContent = 'Nhập đủ tên đăng nhập và mật khẩu.'; return; }
-  if (username !== OWNER_USERNAME){
-    err.textContent = 'Tên đăng nhập không đúng.';
-    return;
-  }
-  auth.signInWithEmailAndPassword(OWNER_INTERNAL_EMAIL, pass).catch(e => {
+  const internalEmail = slugify(username) + '@so-nha-nong.local';
+  pendingStoreName = username;
+  auth.signInWithEmailAndPassword(internalEmail, pass).catch(e => {
     if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-login-credentials' || e.code === 'auth/invalid-credential'){
-      auth.createUserWithEmailAndPassword(OWNER_INTERNAL_EMAIL, pass).catch(e2 => {
+      auth.createUserWithEmailAndPassword(internalEmail, pass).then(cred => {
+        db.collection('stores').doc(cred.user.uid).set({
+          storeName: username,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }).catch(e2 => {
         err.textContent = 'Lỗi đăng nhập: ' + e2.message;
       });
     } else {
@@ -505,15 +516,20 @@ function doLogout(){
 
 auth.onAuthStateChanged(user => {
   if (user){
+    storeRef = db.collection('stores').doc(user.uid);
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
-    document.getElementById('storeGreeting').textContent = 'Xin chào, ' + OWNER_USERNAME;
     document.getElementById('todayDate').textContent = todayStr();
+    storeRef.get().then(doc => {
+      const name = doc.exists ? doc.data().storeName : (pendingStoreName || 'Chủ cửa hàng');
+      document.getElementById('storeGreeting').textContent = 'Xin chào, ' + name;
+    });
     listenProducts();
     listenCustomers();
     listenSales();
     listenDebtPayments();
   } else {
+    storeRef = null;
     document.getElementById('loginScreen').style.display = 'flex';
     document.getElementById('app').style.display = 'none';
   }
@@ -521,7 +537,7 @@ auth.onAuthStateChanged(user => {
 
 // ---------- FIRESTORE LISTENERS ----------
 function listenProducts(){
-  db.collection('products').orderBy('name').onSnapshot(snap => {
+  storeRef.collection('products').orderBy('name').onSnapshot(snap => {
     products = snap.docs.map(d => ({ id:d.id, ...d.data() }));
     renderStockList();
     renderPosProductList();
@@ -530,20 +546,20 @@ function listenProducts(){
   });
 }
 function listenCustomers(){
-  db.collection('customers').orderBy('name').onSnapshot(snap => {
+  storeRef.collection('customers').orderBy('name').onSnapshot(snap => {
     customers = snap.docs.map(d => ({ id:d.id, ...d.data() }));
     renderDebtList();
     fillPosCustomerSelect();
   });
 }
 function listenSales(){
-  db.collection('sales').orderBy('createdAt','desc').limit(200).onSnapshot(snap => {
+  storeRef.collection('sales').orderBy('createdAt','desc').limit(200).onSnapshot(snap => {
     sales = snap.docs.map(d => ({ id:d.id, ...d.data() }));
     renderReports();
   });
 }
 function listenDebtPayments(){
-  db.collection('debtPayments').orderBy('createdAt','desc').limit(200).onSnapshot(snap => {
+  storeRef.collection('debtPayments').orderBy('createdAt','desc').limit(200).onSnapshot(snap => {
     debtPayments = snap.docs.map(d => ({ id:d.id, ...d.data() }));
     renderReports();
   });
@@ -660,7 +676,7 @@ function saveProduct(){
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
 
-  const ref = editingProductId ? db.collection('products').doc(editingProductId) : db.collection('products').doc();
+  const ref = editingProductId ? storeRef.collection('products').doc(editingProductId) : storeRef.collection('products').doc();
   if (!editingProductId) data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
   ref.set(data, { merge:true }).then(() => {
       closeModal('productModal');
@@ -677,7 +693,7 @@ function saveProduct(){
 function deleteProduct(){
   if (!editingProductId) return;
   if (!confirm('Xoá sản phẩm này? Không thể hoàn tác.')) return;
-  db.collection('products').doc(editingProductId).delete()
+  storeRef.collection('products').doc(editingProductId).delete()
     .then(() => closeModal('productModal'))
     .catch(e => alert('Lỗi xoá: ' + e.message));
 }
@@ -700,9 +716,9 @@ function confirmStockIn(){
   const p = products.find(x => x.id === id);
   const update = { stock: firebase.firestore.FieldValue.increment(qty) };
   if (newCost) update.cost = newCost;
-  db.collection('products').doc(id).update(update)
+  storeRef.collection('products').doc(id).update(update)
     .then(() => {
-      db.collection('stockLogs').add({
+      storeRef.collection('stockLogs').add({
         productId: id, productName: p.name, qty,
         cost: newCost || p.cost || 0,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -799,7 +815,7 @@ function checkout(){
   const isDebt = document.getElementById('posIsDebt').checked && customerId;
 
   const batch = db.batch();
-  const saleRef = db.collection('sales').doc();
+  const saleRef = storeRef.collection('sales').doc();
   batch.set(saleRef, {
     items: cart.map(c => ({ productId:c.productId, name:c.name, price:c.price, qty:c.qty, unit:c.unit })),
     total,
@@ -809,11 +825,11 @@ function checkout(){
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   });
   cart.forEach(c => {
-    const pRef = db.collection('products').doc(c.productId);
+    const pRef = storeRef.collection('products').doc(c.productId);
     batch.update(pRef, { stock: firebase.firestore.FieldValue.increment(-c.qty) });
   });
   if (isDebt){
-    const cRef = db.collection('customers').doc(customerId);
+    const cRef = storeRef.collection('customers').doc(customerId);
     batch.update(cRef, { debt: firebase.firestore.FieldValue.increment(total) });
   }
 
@@ -859,7 +875,7 @@ function openAddCustomer(){
 function saveCustomer(){
   const name = document.getElementById('custName').value.trim();
   if (!name){ alert('Nhập tên khách hàng.'); return; }
-  db.collection('customers').add({
+  storeRef.collection('customers').add({
     name, phone: document.getElementById('custPhone').value.trim(), debt: 0,
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   }).then(() => closeModal('customerModal'))
@@ -880,10 +896,10 @@ function confirmPayDebt(){
   if (!amount){ alert('Nhập số tiền.'); return; }
   const customer = customers.find(c => c.id === id);
   const batch = db.batch();
-  batch.update(db.collection('customers').doc(id), {
+  batch.update(storeRef.collection('customers').doc(id), {
     debt: firebase.firestore.FieldValue.increment(-amount)
   });
-  batch.set(db.collection('debtPayments').doc(), {
+  batch.set(storeRef.collection('debtPayments').doc(), {
     customerId: id,
     customerName: customer ? customer.name : '',
     amount,
