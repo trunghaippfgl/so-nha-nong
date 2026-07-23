@@ -364,6 +364,10 @@
       <div class="stat leaf"><div class="label">Đã thu tháng này</div><div class="value mono" id="statMonthCollected">0đ</div></div>
     </div>
     <div class="stat-row" style="margin-bottom:14px;">
+      <div class="stat leaf"><div class="label">Lợi nhuận hôm nay</div><div class="value mono" id="statTodayProfit">0đ</div></div>
+      <div class="stat leaf"><div class="label">Lợi nhuận tháng này</div><div class="value mono" id="statMonthProfit">0đ</div></div>
+    </div>
+    <div class="stat-row" style="margin-bottom:14px;">
       <div class="stat rust"><div class="label">Tổng nợ hiện tại</div><div class="value mono" id="statCurrentDebt">0đ</div></div>
     </div>
     <div class="section-title">Bán chạy nhất tháng này</div>
@@ -975,7 +979,7 @@ function addToCart(productId){
     if (existing.qty + 1 > p.stock){ alert('Không đủ tồn kho.'); return; }
     existing.qty++;
   } else {
-    cart.push({ productId, name:p.name, price:p.price, unit:p.unit, qty:1 });
+    cart.push({ productId, name:p.name, price:p.price, unit:p.unit, qty:1, cost:p.cost||0 });
   }
   renderCart();
 }
@@ -1087,7 +1091,7 @@ function checkout(){
   const batch = db.batch();
   const saleRef = storeRef.collection('sales').doc();
   batch.set(saleRef, {
-    items: cart.map(c => ({ productId:c.productId, name:c.name, price:c.price, qty:c.qty, unit:c.unit })),
+    items: cart.map(c => ({ productId:c.productId, name:c.name, price:c.price, qty:c.qty, unit:c.unit, cost:c.cost||0 })),
     total,
     paidAmount: paidNow,
     debtAmount,
@@ -1107,7 +1111,7 @@ function checkout(){
 
   batch.commit().then(() => {
     renderInvoice({
-      items: cart.map(c => ({ productId:c.productId, name:c.name, price:c.price, qty:c.qty, unit:c.unit })),
+      items: cart.map(c => ({ productId:c.productId, name:c.name, price:c.price, qty:c.qty, unit:c.unit, cost:c.cost||0 })),
       total, paidAmount: paidNow, debtAmount,
       customerName: customer ? customer.name : 'Khách lẻ', isDebt: !!isDebt,
       createdAt: { toDate: () => new Date() }
@@ -1247,16 +1251,19 @@ function renderReports(){
 
   let todayRev = 0, monthRev = 0;
   let todayCollected = 0, monthCollected = 0;
+  let todayProfit = 0, monthProfit = 0;
   const productSalesCount = {};
 
   sales.forEach(s => {
     if (!s.createdAt || !s.createdAt.toDate) return;
     const d = s.createdAt.toDate();
     const cashPart = s.isDebt ? (s.paidAmount || 0) : (s.total || 0);
-    if (d >= startToday){ todayRev += s.total || 0; todayCollected += cashPart; }
+    const profitPart = (s.items||[]).reduce((sum,it) => sum + ((it.price - (it.cost||0)) * it.qty), 0);
+    if (d >= startToday){ todayRev += s.total || 0; todayCollected += cashPart; todayProfit += profitPart; }
     if (d >= startMonth){
       monthRev += s.total || 0;
       monthCollected += cashPart;
+      monthProfit += profitPart;
       (s.items||[]).forEach(it => {
         productSalesCount[it.name] = (productSalesCount[it.name]||0) + it.qty;
       });
@@ -1276,6 +1283,8 @@ function renderReports(){
   document.getElementById('statMonthRevenue').textContent = money(monthRev);
   document.getElementById('statTodayCollected').textContent = money(todayCollected);
   document.getElementById('statMonthCollected').textContent = money(monthCollected);
+  document.getElementById('statTodayProfit').textContent = money(todayProfit);
+  document.getElementById('statMonthProfit').textContent = money(monthProfit);
   document.getElementById('statCurrentDebt').textContent = money(totalDebtNow);
 
   const top = Object.entries(productSalesCount).sort((a,b)=>b[1]-a[1]).slice(0,5);
