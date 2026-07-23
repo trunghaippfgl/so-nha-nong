@@ -204,7 +204,10 @@
   #loginScreen h1{ font-size:26px; color:var(--wheat-400); margin-bottom:4px; }
   #loginScreen .tag{ font-size:13px; color:var(--cream-500); margin-bottom:28px; }
   #loginScreen .box{ width:100%; max-width:340px; }
-  #loginErr{ color:var(--rust-500); font-size:13px; margin-top:8px; min-height:16px; }
+  .auth-tabs{ display:flex; gap:6px; margin-bottom:18px; background:var(--soil-800); border-radius:10px; padding:4px; }
+  .auth-tab{ flex:1; padding:10px; border:none; background:none; color:var(--cream-500); font-family:inherit; font-size:13.5px; font-weight:600; border-radius:8px; cursor:pointer; }
+  .auth-tab.active{ background:var(--wheat-500); color:#241B08; }
+  .auth-err{ color:var(--rust-500); font-size:13px; margin-top:8px; min-height:16px; }
   /* --- Hóa đơn / Phiếu bán hàng --- */
   .inv-box{
     background:#fffdf8; color:#2a2118; padding:22px 20px;
@@ -244,16 +247,29 @@
   <h1>Sổ Nhà Nông</h1>
   <div class="tag">Quản lý bán hàng · Kho · Công nợ</div>
   <div class="box">
-    <label>Tên đăng nhập</label>
-    <input id="loginEmail" type="text" placeholder="VD: ĐLNN Xuân Thành">
-    <label>Mật khẩu</label>
-    <input id="loginPass" type="password" placeholder="••••••••">
-    <div id="loginErr"></div>
-    <div style="margin-top:14px;">
-      <button class="btn btn-primary" onclick="doLogin()">Đăng nhập</button>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Đăng nhập</button>
+      <button class="auth-tab" id="tabRegister" onclick="switchAuthTab('register')">Đăng ký mới</button>
     </div>
-    <div style="margin-top:10px; text-align:center;">
-      <button onclick="doRegister()" style="background:none; border:none; color:var(--cream-500); font-size:13px; font-family:inherit; cursor:pointer; text-decoration:underline;">Chưa có tài khoản? Đăng ký cửa hàng mới</button>
+
+    <div id="loginFields">
+      <label>Tên đăng nhập</label>
+      <input id="loginEmail" type="text" placeholder="VD: ĐLNN ...">
+      <label>Mật khẩu</label>
+      <input id="loginPass" type="password" placeholder="••••••••">
+      <div id="loginErr" class="auth-err"></div>
+      <button class="btn btn-primary" id="loginBtn" onclick="doLogin()" style="margin-top:14px;">Đăng nhập</button>
+    </div>
+
+    <div id="registerFields" style="display:none;">
+      <label>Tên cửa hàng</label>
+      <input id="regStoreName" type="text" placeholder="VD: ĐLNN ...">
+      <label>Mật khẩu</label>
+      <input id="regPass" type="password" placeholder="Ít nhất 6 ký tự">
+      <label>Nhập lại mật khẩu</label>
+      <input id="regPass2" type="password" placeholder="Nhập lại mật khẩu">
+      <div id="registerErr" class="auth-err"></div>
+      <button class="btn btn-primary" id="registerBtn" onclick="doRegister()" style="margin-top:14px;">Tạo cửa hàng mới</button>
     </div>
   </div>
 </div>
@@ -600,7 +616,22 @@ let currentStoreName = 'Cửa hàng';
 let currentStorePhone = '';
 let currentStoreAddress = '';
 
+function switchAuthTab(tab){
+  document.getElementById('tabLogin').classList.toggle('active', tab==='login');
+  document.getElementById('tabRegister').classList.toggle('active', tab==='register');
+  document.getElementById('loginFields').style.display = tab==='login' ? 'block' : 'none';
+  document.getElementById('registerFields').style.display = tab==='register' ? 'block' : 'none';
+  document.getElementById('loginErr').textContent = '';
+  document.getElementById('registerErr').textContent = '';
+}
+
+function setButtonLoading(btn, loading, textNormal){
+  btn.disabled = loading;
+  btn.textContent = loading ? 'Đang xử lý...' : textNormal;
+}
+
 function doLogin(){
+  const btn = document.getElementById('loginBtn');
   const username = document.getElementById('loginEmail').value.trim();
   const pass = document.getElementById('loginPass').value;
   const err = document.getElementById('loginErr');
@@ -608,9 +639,11 @@ function doLogin(){
   if (!username || !pass) { err.textContent = 'Nhập đủ tên đăng nhập và mật khẩu.'; return; }
   const internalEmail = slugify(username) + '@so-nha-nong.local';
   pendingStoreName = username;
+  setButtonLoading(btn, true, 'Đăng nhập');
   auth.signInWithEmailAndPassword(internalEmail, pass).catch(e => {
+    setButtonLoading(btn, false, 'Đăng nhập');
     if (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-login-credentials' || e.code === 'auth/invalid-credential'){
-      err.textContent = 'Không tìm thấy cửa hàng "' + username + '". Kiểm tra lại tên đăng nhập, hoặc bấm "Đăng ký cửa hàng mới" nếu đây là lần đầu sử dụng.';
+      err.textContent = 'Không tìm thấy cửa hàng "' + username + '". Kiểm tra lại tên, hoặc chuyển qua tab "Đăng ký mới".';
     } else if (e.code === 'auth/wrong-password'){
       err.textContent = 'Sai mật khẩu.';
     } else {
@@ -620,26 +653,30 @@ function doLogin(){
 }
 
 function doRegister(){
-  const username = document.getElementById('loginEmail').value.trim();
-  const pass = document.getElementById('loginPass').value;
-  const err = document.getElementById('loginErr');
+  const btn = document.getElementById('registerBtn');
+  const username = document.getElementById('regStoreName').value.trim();
+  const pass = document.getElementById('regPass').value;
+  const pass2 = document.getElementById('regPass2').value;
+  const err = document.getElementById('registerErr');
   err.textContent = '';
-  if (!username || !pass) { err.textContent = 'Nhập đủ tên cửa hàng và mật khẩu để đăng ký.'; return; }
+  if (!username || !pass || !pass2){ err.textContent = 'Vui lòng điền đủ thông tin.'; return; }
   if (pass.length < 6){ err.textContent = 'Mật khẩu cần ít nhất 6 ký tự.'; return; }
-  if (!confirm('Xác nhận tạo cửa hàng mới với tên "' + username + '"?\n\nNếu đây KHÔNG phải lần đầu bạn dùng app, đừng bấm OK — hãy dùng nút "Đăng nhập" thay vì đăng ký, để tránh mất dữ liệu cũ.')) return;
+  if (pass !== pass2){ err.textContent = 'Mật khẩu nhập lại không khớp.'; return; }
   const internalEmail = slugify(username) + '@so-nha-nong.local';
   pendingStoreName = username;
+  setButtonLoading(btn, true, 'Tạo cửa hàng mới');
   auth.createUserWithEmailAndPassword(internalEmail, pass).then(cred => {
     storeRef = db.collection('stores').doc(cred.user.uid);
-    storeRef.set({
+    return storeRef.set({
       storeName: username,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       trialStartAt: firebase.firestore.FieldValue.serverTimestamp(),
       paid: false
     });
   }).catch(e => {
+    setButtonLoading(btn, false, 'Tạo cửa hàng mới');
     if (e.code === 'auth/email-already-in-use'){
-      err.textContent = 'Tên cửa hàng "' + username + '" đã tồn tại. Vui lòng dùng nút "Đăng nhập" thay vì đăng ký.';
+      err.textContent = 'Tên cửa hàng "' + username + '" đã tồn tại. Vui lòng dùng tab "Đăng nhập".';
     } else {
       err.textContent = 'Lỗi đăng ký: ' + e.message;
     }
