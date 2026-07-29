@@ -342,15 +342,28 @@
   </div>
 
   <!-- ---- TAB: CÔNG NỢ ---- -->
-  <div class="screen" id="screen-cong-no">
+   <div class="screen" id="screen-cong-no">
     <div class="stat-row" style="margin-bottom:14px;">
-      <div class="stat rust"><div class="label">Tổng nợ đang có</div><div class="value" id="statTotalDebt">0đ</div></div>
+      <div class="stat rust"><div class="label">Khách nợ mình</div><div class="value" id="statTotalDebt">0đ</div></div>
+      <div class="stat wheat"><div class="label">Mình nợ NCC</div><div class="value" id="statTotalSupplierDebt">0đ</div></div>
     </div>
-    <div class="section-title">Danh sách khách nợ</div>
-    <div class="card" id="debtList"></div>
-    <button class="btn btn-ghost" style="margin-top:10px;" onclick="openAddCustomer()">+ Thêm khách hàng mới</button>
-  </div>
+    <div style="display:flex; gap:8px; margin-bottom:14px;">
+      <button class="btn btn-sm" id="debtSubTabCustomerBtn" style="flex:1;" onclick="showDebtSubTab('customer')">👤 Khách nợ</button>
+      <button class="btn btn-sm btn-ghost" id="debtSubTabSupplierBtn" style="flex:1;" onclick="showDebtSubTab('supplier')">🚚 Nhà cung cấp</button>
+    </div>
 
+    <div id="debtCustomerSection">
+      <div class="section-title">Danh sách khách nợ</div>
+      <div class="card" id="debtList"></div>
+      <button class="btn btn-ghost" style="margin-top:10px;" onclick="openAddCustomer()">+ Thêm khách hàng mới</button>
+    </div>
+
+    <div id="debtSupplierSection" style="display:none;">
+      <div class="section-title">Danh sách nhà cung cấp</div>
+      <div class="card" id="supplierList"></div>
+      <button class="btn btn-ghost" style="margin-top:10px;" onclick="openAddSupplier()">+ Thêm nhà cung cấp mới</button>
+    </div>
+  </div>
   <!-- ---- TAB: BÁO CÁO ---- -->
   <div class="screen" id="screen-bao-cao">
     <div class="section-title" style="margin-top:0;">Cảnh báo tồn kho</div>
@@ -509,6 +522,83 @@
     </div>
   </div>
 </div>
+<!-- ============ MODAL: GHI CHÚ CÔNG NỢ KHÁCH HÀNG ============ -->
+<div class="overlay" id="customerNoteModal">
+  <div class="sheet">
+    <button class="sheet-close" onclick="closeModal('customerNoteModal')">✕</button>
+    <h3>Ghi chú công nợ: <span id="custNoteName"></span></h3>
+    <input type="hidden" id="custNoteId">
+    <label>Ghi chú (hẹn ngày trả, điều kiện...)</label>
+    <textarea id="custNoteText" rows="4" placeholder="VD: Hẹn trả cuối tháng 8"></textarea>
+    <div style="margin-top:16px;">
+      <button class="btn btn-primary" onclick="saveCustomerNote()">Lưu ghi chú</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: THÊM NHÀ CUNG CẤP ============ -->
+<div class="overlay" id="supplierModal">
+  <div class="sheet">
+    <button class="sheet-close" onclick="closeModal('supplierModal')">✕</button>
+    <h3>Thêm nhà cung cấp</h3>
+    <label>Tên nhà cung cấp *</label>
+    <input id="suppName" placeholder="VD: Cty phân bón Sông Gianh">
+    <label>Số điện thoại</label>
+    <input id="suppPhone" placeholder="Không bắt buộc">
+    <div style="margin-top:16px;">
+      <button class="btn btn-primary" onclick="saveSupplier()">Lưu nhà cung cấp</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: GHI NỢ THÊM (NHẬP HÀNG CHƯA TRẢ NCC) ============ -->
+<div class="overlay" id="supplierDebtModal">
+  <div class="sheet">
+    <button class="sheet-close" onclick="closeModal('supplierDebtModal')">✕</button>
+    <h3>Ghi nợ thêm: <span id="suppDebtName"></span></h3>
+    <input type="hidden" id="suppDebtId">
+    <div class="card-tight card" style="margin:10px 0;">
+      Đang nợ NCC: <b class="mono" id="suppDebtCurrentAmount">0đ</b>
+    </div>
+    <label>Số tiền nhập hàng còn nợ *</label>
+    <input id="suppDebtAmount" type="number" inputmode="numeric" placeholder="0">
+    <div style="margin-top:16px;">
+      <button class="btn btn-primary" onclick="confirmAddSupplierDebt()">Xác nhận ghi nợ</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: TRẢ NỢ NHÀ CUNG CẤP ============ -->
+<div class="overlay" id="paySupplierDebtModal">
+  <div class="sheet">
+    <button class="sheet-close" onclick="closeModal('paySupplierDebtModal')">✕</button>
+    <h3>Trả nợ: <span id="paySuppDebtName"></span></h3>
+    <input type="hidden" id="paySuppDebtId">
+    <div class="card-tight card" style="margin:10px 0;">
+      Đang nợ NCC: <b class="mono" id="paySuppDebtCurrentAmount">0đ</b>
+    </div>
+    <label>Số tiền đã trả *</label>
+    <input id="paySuppDebtAmount" type="number" inputmode="numeric" placeholder="0">
+    <div style="margin-top:16px;">
+      <button class="btn btn-leaf" onclick="confirmPaySupplierDebt()">Xác nhận đã trả</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: GHI CHÚ NHÀ CUNG CẤP ============ -->
+<div class="overlay" id="supplierNoteModal">
+  <div class="sheet">
+    <button class="sheet-close" onclick="closeModal('supplierNoteModal')">✕</button>
+    <h3>Ghi chú: <span id="suppNoteName"></span></h3>
+    <input type="hidden" id="suppNoteId">
+    <label>Ghi chú</label>
+    <textarea id="suppNoteText" rows="4" placeholder="VD: Hạn thanh toán trong 30 ngày"></textarea>
+    <div style="margin-top:16px;">
+      <button class="btn btn-primary" onclick="saveSupplierNote()">Lưu ghi chú</button>
+    </div>
+  </div>
+</div>
+
 <!-- ============ MODAL: HÓA ĐƠN ============ -->
 <div class="overlay" id="invoiceModal">
   <div class="sheet">
@@ -565,6 +655,7 @@ let sales = [];
 let cart = []; // {productId, name, price, qty, unit}
 let editingProductId = null;
 let debtPayments = [];
+let suppliers = [];
 function numberToVietnameseWords(number){
   if (number === 0) return "Không đồng";
   const digits = ["không","một","hai","ba","bốn","năm","sáu","bảy","tám","chín"];
@@ -743,6 +834,7 @@ auth.onAuthStateChanged(user => {
     listenCustomers();
     listenSales();
     listenDebtPayments();
+    listenSuppliers();
   } else {
     storeRef = null;
     document.getElementById('loginScreen').style.display = 'flex';
@@ -780,6 +872,12 @@ function listenDebtPayments(){
     renderReports();
   });
 } 
+function listenSuppliers(){
+  storeRef.collection('suppliers').orderBy('name').onSnapshot(snap => {
+    suppliers = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    renderSupplierList();
+  });
+}
 
 // ---------- TABS ----------
 function showTab(name){
@@ -788,6 +886,29 @@ function showTab(name){
   document.querySelectorAll('.navbtn').forEach(b => b.classList.remove('on'));
   document.getElementById('nav-' + name).classList.add('on');
   document.getElementById('addProductFab').style.display = (name === 'kho-hang') ? 'flex' : 'none';
+}
+function showDebtSubTab(tab){
+  document.getElementById('debtCustomerSection').style.display = tab === 'customer' ? 'block' : 'none';
+  document.getElementById('debtSupplierSection').style.display = tab === 'supplier' ? 'block' : 'none';
+  document.getElementById('debtSubTabCustomerBtn').className = tab === 'customer' ? 'btn btn-sm' : 'btn btn-sm btn-ghost';
+  document.getElementById('debtSubTabSupplierBtn').className = tab === 'supplier' ? 'btn btn-sm' : 'btn btn-sm btn-ghost';
+}
+function formatDebtDuration(ts){
+  if (!ts || !ts.toDate) return '';
+  const start = ts.toDate();
+  const now = new Date();
+  let months = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
+  let days = now.getDate() - start.getDate();
+  if (days < 0){
+    months -= 1;
+    const prevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+    days += prevMonth.getDate();
+  }
+  if (months <= 0 && days <= 0) return 'hôm nay';
+  const parts = [];
+  if (months > 0) parts.push(months + ' tháng');
+  if (days > 0) parts.push(days + ' ngày');
+  return parts.join(' ');
 }
 document.getElementById('addProductFab').style.display = 'none';
 
@@ -1104,9 +1225,11 @@ function checkout(){
     const pRef = storeRef.collection('products').doc(c.productId);
     batch.update(pRef, { stock: firebase.firestore.FieldValue.increment(-c.qty) });
   });
-  if (isDebt && debtAmount > 0){
-    const cRef = storeRef.collection('customers').doc(customerId);
-    batch.update(cRef, { debt: firebase.firestore.FieldValue.increment(debtAmount) });
+   if (isDebt && debtAmount > 0){
+    const cRef = db.collection('customers').doc(customerId);
+    const custUpdate = { debt: firebase.firestore.FieldValue.increment(debtAmount) };
+    if (!customer || (customer.debt||0) <= 0) custUpdate.debtSince = firebase.firestore.FieldValue.serverTimestamp();
+    batch.update(cRef, custUpdate);
   }
 
   batch.commit().then(() => {
@@ -1137,11 +1260,14 @@ function renderDebtList(){
     return;
   }
   box.innerHTML = customers.map(c => `
-    <div class="prod-item">
+    <div class="prod-item" style="align-items:flex-start;">
       <div class="prod-ic">👤</div>
       <div style="flex:1;">
         <div class="prod-name">${c.name}</div>
         <div class="prod-meta">${c.phone || 'Chưa có SĐT'}</div>
+        ${(c.debt||0)>0 && c.debtSince ? `<div class="prod-meta" style="color:var(--rust-500);">⏱ Nợ đã ${formatDebtDuration(c.debtSince)}</div>` : ''}
+        ${c.debtNote ? `<div class="prod-meta" style="font-style:italic;">📝 ${c.debtNote}</div>` : ''}
+        <button class="btn btn-ghost btn-sm" style="margin-top:6px;" onclick="openCustomerNote('${c.id}')">Ghi chú</button>
       </div>
       <div class="prod-stock">
         <div class="n" style="color:${(c.debt||0)>0?'var(--rust-500)':'var(--leaf-500)'};">${money(c.debt||0)}</div>
@@ -1162,6 +1288,21 @@ function saveCustomer(){
     name, phone: document.getElementById('custPhone').value.trim(), debt: 0,
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   }).then(() => closeModal('customerModal'))
+    .catch(e => alert('Lỗi: ' + e.message));
+}
+function openCustomerNote(customerId){
+  const c = customers.find(x => x.id === customerId);
+  if (!c) return;
+  document.getElementById('custNoteId').value = customerId;
+  document.getElementById('custNoteName').textContent = c.name;
+  document.getElementById('custNoteText').value = c.debtNote || '';
+  openModal('customerNoteModal');
+}
+function saveCustomerNote(){
+  const id = document.getElementById('custNoteId').value;
+  const note = document.getElementById('custNoteText').value.trim();
+  db.collection('customers').doc(id).update({ debtNote: note })
+    .then(() => closeModal('customerNoteModal'))
     .catch(e => alert('Lỗi: ' + e.message));
 }
 function openPayDebt(customerId){
@@ -1208,6 +1349,107 @@ function confirmPayDebt(){
     `;
     openModal('invoiceModal');
   }).catch(e => alert('Lỗi: ' + e.message));
+}
+// ---------- NHÀ CUNG CẤP ----------
+function renderSupplierList(){
+  const withDebt = suppliers.filter(s => (s.debt||0) > 0);
+  const totalDebt = withDebt.reduce((s,x) => s + (x.debt||0), 0);
+  document.getElementById('statTotalSupplierDebt').textContent = money(totalDebt);
+  const box = document.getElementById('supplierList');
+  if (!suppliers.length){
+    box.innerHTML = '<div class="empty-state"><div class="ic">🚚</div>Chưa có nhà cung cấp nào.</div>';
+    return;
+  }
+  box.innerHTML = suppliers.map(s => `
+    <div class="prod-item" style="align-items:flex-start;">
+      <div class="prod-ic">🚚</div>
+      <div style="flex:1;">
+        <div class="prod-name">${s.name}</div>
+        <div class="prod-meta">${s.phone || 'Chưa có SĐT'}</div>
+        ${(s.debt||0)>0 && s.debtSince ? `<div class="prod-meta" style="color:var(--rust-500);">⏱ Nợ đã ${formatDebtDuration(s.debtSince)}</div>` : ''}
+        ${s.debtNote ? `<div class="prod-meta" style="font-style:italic;">📝 ${s.debtNote}</div>` : ''}
+        <div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" onclick="openSupplierNote('${s.id}')">Ghi chú</button>
+          <button class="btn btn-ghost btn-sm" onclick="openAddSupplierDebt('${s.id}')">+ Ghi nợ</button>
+        </div>
+      </div>
+      <div class="prod-stock">
+        <div class="n" style="color:${(s.debt||0)>0?'var(--rust-500)':'var(--leaf-500)'};">${money(s.debt||0)}</div>
+        ${(s.debt||0)>0 ? `<button class="btn btn-sm btn-leaf" style="margin-top:6px;" onclick="openPaySupplierDebt('${s.id}')">Trả nợ</button>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+function openAddSupplier(){
+  document.getElementById('suppName').value = '';
+  document.getElementById('suppPhone').value = '';
+  openModal('supplierModal');
+}
+function saveSupplier(){
+  const name = document.getElementById('suppName').value.trim();
+  if (!name){ alert('Nhập tên nhà cung cấp.'); return; }
+  db.collection('suppliers').add({
+    name, phone: document.getElementById('suppPhone').value.trim(), debt: 0, debtNote: '',
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  }).then(() => closeModal('supplierModal'))
+    .catch(e => alert('Lỗi: ' + e.message));
+}
+function openSupplierNote(supplierId){
+  const s = suppliers.find(x => x.id === supplierId);
+  if (!s) return;
+  document.getElementById('suppNoteId').value = supplierId;
+  document.getElementById('suppNoteName').textContent = s.name;
+  document.getElementById('suppNoteText').value = s.debtNote || '';
+  openModal('supplierNoteModal');
+}
+function saveSupplierNote(){
+  const id = document.getElementById('suppNoteId').value;
+  const note = document.getElementById('suppNoteText').value.trim();
+  db.collection('suppliers').doc(id).update({ debtNote: note })
+    .then(() => closeModal('supplierNoteModal'))
+    .catch(e => alert('Lỗi: ' + e.message));
+}
+function openAddSupplierDebt(supplierId){
+  const s = suppliers.find(x => x.id === supplierId);
+  if (!s) return;
+  document.getElementById('suppDebtId').value = supplierId;
+  document.getElementById('suppDebtName').textContent = s.name;
+  document.getElementById('suppDebtCurrentAmount').textContent = money(s.debt||0);
+  document.getElementById('suppDebtAmount').value = '';
+  openModal('supplierDebtModal');
+}
+function confirmAddSupplierDebt(){
+  const id = document.getElementById('suppDebtId').value;
+  const amount = parseFloat(document.getElementById('suppDebtAmount').value) || 0;
+  if (!amount){ alert('Nhập số tiền.'); return; }
+  const supplier = suppliers.find(s => s.id === id);
+  const wasZero = !supplier || (supplier.debt||0) <= 0;
+  const update = { debt: firebase.firestore.FieldValue.increment(amount) };
+  if (wasZero) update.debtSince = firebase.firestore.FieldValue.serverTimestamp();
+  db.collection('suppliers').doc(id).update(update)
+    .then(() => closeModal('supplierDebtModal'))
+    .catch(e => alert('Lỗi: ' + e.message));
+}
+function openPaySupplierDebt(supplierId){
+  const s = suppliers.find(x => x.id === supplierId);
+  if (!s) return;
+  document.getElementById('paySuppDebtId').value = supplierId;
+  document.getElementById('paySuppDebtName').textContent = s.name;
+  document.getElementById('paySuppDebtCurrentAmount').textContent = money(s.debt||0);
+  document.getElementById('paySuppDebtAmount').value = '';
+  openModal('paySupplierDebtModal');
+}
+function confirmPaySupplierDebt(){
+  const id = document.getElementById('paySuppDebtId').value;
+  const amount = parseFloat(document.getElementById('paySuppDebtAmount').value) || 0;
+  if (!amount){ alert('Nhập số tiền.'); return; }
+  const supplier = suppliers.find(s => s.id === id);
+  const debtBefore = supplier ? (supplier.debt||0) : 0;
+  const update = { debt: firebase.firestore.FieldValue.increment(-amount) };
+  if (debtBefore - amount <= 0) update.debtSince = firebase.firestore.FieldValue.delete();
+  db.collection('suppliers').doc(id).update(update)
+    .then(() => closeModal('paySupplierDebtModal'))
+    .catch(e => alert('Lỗi: ' + e.message));
 }
 
 // ---------- BÁO CÁO ----------
