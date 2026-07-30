@@ -1242,7 +1242,7 @@ function checkout(){
     batch.update(pRef, { stock: firebase.firestore.FieldValue.increment(-c.qty) });
   });
    if (isDebt && debtAmount > 0){
-    const cRef = db.collection('customers').doc(customerId);
+    const cRef = storeRef.collection('customers').doc(customerId);
     const custUpdate = { debt: firebase.firestore.FieldValue.increment(debtAmount) };
     if (!customer || (customer.debt||0) <= 0) custUpdate.debtSince = firebase.firestore.FieldValue.serverTimestamp();
     batch.update(cRef, custUpdate);
@@ -1326,7 +1326,7 @@ function confirmAddCustomerDebt(){
   const wasZero = !customer || (customer.debt||0) <= 0;
   const update = { debt: firebase.firestore.FieldValue.increment(amount) };
   if (wasZero) update.debtSince = firebase.firestore.FieldValue.serverTimestamp();
-  db.collection('customers').doc(id).update(update)
+  storeRef.collection('customers').doc(id).update(update)
     .then(() => closeModal('addCustomerDebtModal'))
     .catch(e => alert('Lỗi: ' + e.message));
 }
@@ -1341,7 +1341,7 @@ function openCustomerNote(customerId){
 function saveCustomerNote(){
   const id = document.getElementById('custNoteId').value;
   const note = document.getElementById('custNoteText').value.trim();
-  db.collection('customers').doc(id).update({ debtNote: note })
+  storeRef.collection('customers').doc(id).update({ debtNote: note })
     .then(() => closeModal('customerNoteModal'))
     .catch(e => alert('Lỗi: ' + e.message));
 }
@@ -1428,7 +1428,7 @@ function openAddSupplier(){
 function saveSupplier(){
   const name = document.getElementById('suppName').value.trim();
   if (!name){ alert('Nhập tên nhà cung cấp.'); return; }
-  db.collection('suppliers').add({
+  storeRef.collection('suppliers').add({
     name, phone: document.getElementById('suppPhone').value.trim(), debt: 0, debtNote: '',
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   }).then(() => closeModal('supplierModal'))
@@ -1445,7 +1445,7 @@ function openSupplierNote(supplierId){
 function saveSupplierNote(){
   const id = document.getElementById('suppNoteId').value;
   const note = document.getElementById('suppNoteText').value.trim();
-  db.collection('suppliers').doc(id).update({ debtNote: note })
+  storeRef.collection('suppliers').doc(id).update({ debtNote: note })
     .then(() => closeModal('supplierNoteModal'))
     .catch(e => alert('Lỗi: ' + e.message));
 }
@@ -1466,7 +1466,7 @@ function confirmAddSupplierDebt(){
   const wasZero = !supplier || (supplier.debt||0) <= 0;
   const update = { debt: firebase.firestore.FieldValue.increment(amount) };
   if (wasZero) update.debtSince = firebase.firestore.FieldValue.serverTimestamp();
-  db.collection('suppliers').doc(id).update(update)
+  storeRef.collection('suppliers').doc(id).update(update)
     .then(() => closeModal('supplierDebtModal'))
     .catch(e => alert('Lỗi: ' + e.message));
 }
@@ -1487,7 +1487,7 @@ function confirmPaySupplierDebt(){
   const debtBefore = supplier ? (supplier.debt||0) : 0;
   const update = { debt: firebase.firestore.FieldValue.increment(-amount) };
   if (debtBefore - amount <= 0) update.debtSince = firebase.firestore.FieldValue.delete();
-  db.collection('suppliers').doc(id).update(update)
+  storeRef.collection('suppliers').doc(id).update(update)
     .then(() => closeModal('paySupplierDebtModal'))
     .catch(e => alert('Lỗi: ' + e.message));
 }
