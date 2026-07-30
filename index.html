@@ -535,6 +535,22 @@
     </div>
   </div>
 </div>
+<!-- ============ MODAL: GHI NỢ CŨ CHO KHÁCH HÀNG ============ -->
+<div class="overlay" id="addCustomerDebtModal">
+  <div class="sheet">
+    <button class="sheet-close" onclick="closeModal('addCustomerDebtModal')">✕</button>
+    <h3>Ghi nợ: <span id="addCustDebtName"></span></h3>
+    <input type="hidden" id="addCustDebtId">
+    <div class="card-tight card" style="margin:10px 0;">
+      Đang nợ: <b class="mono" id="addCustDebtCurrentAmount">0đ</b>
+    </div>
+    <label>Số tiền nợ cần thêm (nợ cũ, hoặc nợ ghi tay) *</label>
+    <input id="addCustDebtAmount" type="number" inputmode="numeric" placeholder="0">
+    <div style="margin-top:16px;">
+      <button class="btn btn-primary" onclick="confirmAddCustomerDebt()">Xác nhận ghi nợ</button>
+    </div>
+  </div>
+</div>
 
 <!-- ============ MODAL: THÊM NHÀ CUNG CẤP ============ -->
 <div class="overlay" id="supplierModal">
@@ -1266,8 +1282,11 @@ function renderDebtList(){
         <div class="prod-name">${c.name}</div>
         <div class="prod-meta">${c.phone || 'Chưa có SĐT'}</div>
         ${(c.debt||0)>0 && c.debtSince ? `<div class="prod-meta" style="color:var(--rust-500);">⏱ Nợ đã ${formatDebtDuration(c.debtSince)}</div>` : ''}
-        ${c.debtNote ? `<div class="prod-meta" style="font-style:italic;">📝 ${c.debtNote}</div>` : ''}
-        <button class="btn btn-ghost btn-sm" style="margin-top:6px;" onclick="openCustomerNote('${c.id}')">Ghi chú</button>
+       ${c.debtNote ? `<div class="prod-meta" style="font-style:italic;">📝 ${c.debtNote}</div>` : ''}
+        <div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" onclick="openCustomerNote('${c.id}')">Ghi chú</button>
+          <button class="btn btn-ghost btn-sm" onclick="openAddCustomerDebt('${c.id}')">+ Ghi nợ</button>
+        </div>
       </div>
       <div class="prod-stock">
         <div class="n" style="color:${(c.debt||0)>0?'var(--rust-500)':'var(--leaf-500)'};">${money(c.debt||0)}</div>
@@ -1288,6 +1307,27 @@ function saveCustomer(){
     name, phone: document.getElementById('custPhone').value.trim(), debt: 0,
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   }).then(() => closeModal('customerModal'))
+    .catch(e => alert('Lỗi: ' + e.message));
+}
+function openAddCustomerDebt(customerId){
+  const c = customers.find(x => x.id === customerId);
+  if (!c) return;
+  document.getElementById('addCustDebtId').value = customerId;
+  document.getElementById('addCustDebtName').textContent = c.name;
+  document.getElementById('addCustDebtCurrentAmount').textContent = money(c.debt||0);
+  document.getElementById('addCustDebtAmount').value = '';
+  openModal('addCustomerDebtModal');
+}
+function confirmAddCustomerDebt(){
+  const id = document.getElementById('addCustDebtId').value;
+  const amount = parseFloat(document.getElementById('addCustDebtAmount').value) || 0;
+  if (!amount){ alert('Nhập số tiền.'); return; }
+  const customer = customers.find(c => c.id === id);
+  const wasZero = !customer || (customer.debt||0) <= 0;
+  const update = { debt: firebase.firestore.FieldValue.increment(amount) };
+  if (wasZero) update.debtSince = firebase.firestore.FieldValue.serverTimestamp();
+  db.collection('customers').doc(id).update(update)
+    .then(() => closeModal('addCustomerDebtModal'))
     .catch(e => alert('Lỗi: ' + e.message));
 }
 function openCustomerNote(customerId){
