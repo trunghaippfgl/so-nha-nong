@@ -1286,6 +1286,7 @@ function renderDebtList(){
         <div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;">
           <button class="btn btn-ghost btn-sm" onclick="openCustomerNote('${c.id}')">Ghi chú</button>
           <button class="btn btn-ghost btn-sm" onclick="openAddCustomerDebt('${c.id}')">+ Ghi nợ</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--rust-500);" onclick="deleteCustomer('${c.id}','${c.name.replace(/'/g, "\\'")}')">Xoá</button>
         </div>
       </div>
       <div class="prod-stock">
@@ -1328,6 +1329,16 @@ function confirmAddCustomerDebt(){
   if (wasZero) update.debtSince = firebase.firestore.FieldValue.serverTimestamp();
   storeRef.collection('customers').doc(id).update(update)
     .then(() => closeModal('addCustomerDebtModal'))
+    .catch(e => alert('Lỗi: ' + e.message));
+}
+function deleteCustomer(id, name){
+  const c = customers.find(x => x.id === id);
+  if (c && (c.debt||0) > 0){
+    alert('Khách hàng này đang còn nợ ' + money(c.debt) + '. Vui lòng thu hết nợ hoặc xoá nợ trước khi xoá khách hàng.');
+    return;
+  }
+  if (!confirm('Xoá khách hàng "' + name + '"? Hành động này không thể hoàn tác.')) return;
+  storeRef.collection('customers').doc(id).delete()
     .catch(e => alert('Lỗi: ' + e.message));
 }
 function openCustomerNote(customerId){
