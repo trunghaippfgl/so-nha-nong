@@ -569,8 +569,30 @@
   <div class="sheet" style="max-height:85vh; overflow-y:auto;">
     <button class="sheet-close" onclick="closeModal('customerStatsModal')">✕</button>
     <h3>📊 Xếp hạng doanh số khách hàng</h3>
-    <label>Năm</label>
-    <input id="customerStatsYear" type="number" placeholder="2026">
+    <div style="display:flex; gap:8px;">
+      <div style="flex:1;">
+        <label>Tháng</label>
+        <select id="customerStatsMonth">
+          <option value="0">Cả năm</option>
+          <option value="1">Tháng 1</option>
+          <option value="2">Tháng 2</option>
+          <option value="3">Tháng 3</option>
+          <option value="4">Tháng 4</option>
+          <option value="5">Tháng 5</option>
+          <option value="6">Tháng 6</option>
+          <option value="7">Tháng 7</option>
+          <option value="8">Tháng 8</option>
+          <option value="9">Tháng 9</option>
+          <option value="10">Tháng 10</option>
+          <option value="11">Tháng 11</option>
+          <option value="12">Tháng 12</option>
+        </select>
+      </div>
+      <div style="flex:1;">
+        <label>Năm</label>
+        <input id="customerStatsYear" type="number" placeholder="2026">
+      </div>
+    </div>
     <div style="margin-top:12px;">
       <button class="btn btn-primary" onclick="loadCustomerStats()">Xem thống kê</button>
     </div>
@@ -1412,17 +1434,19 @@ function openDebtReport(){
 
 function openCustomerStats(){
   document.getElementById('customerStatsYear').value = new Date().getFullYear();
+  document.getElementById('customerStatsMonth').value = new Date().getMonth() + 1;
   document.getElementById('customerStatsResult').innerHTML = '';
   openModal('customerStatsModal');
 }
 
 function loadCustomerStats(){
   const year = parseInt(document.getElementById('customerStatsYear').value) || new Date().getFullYear();
+  const month = parseInt(document.getElementById('customerStatsMonth').value) || 0;
   const resultBox = document.getElementById('customerStatsResult');
   resultBox.innerHTML = '<div class="empty-state">Đang tải...</div>';
 
-  const start = new Date(year, 0, 1);
-  const end = new Date(year + 1, 0, 1);
+  const start = month > 0 ? new Date(year, month - 1, 1) : new Date(year, 0, 1);
+  const end = month > 0 ? new Date(year, month, 1) : new Date(year + 1, 0, 1);
 
   storeRef.collection('sales')
     .where('createdAt', '>=', start)
@@ -1446,9 +1470,10 @@ function loadCustomerStats(){
         return;
       }
 
+      const periodLabel = month > 0 ? ('tháng ' + month + '/' + year) : ('năm ' + year);
       let html = `
         <div class="card-tight card" style="margin-bottom:12px;">
-          Tổng doanh số năm ${year}: <b class="mono" style="color:var(--leaf-500);">${money(grandTotal)}</b><br>
+          Tổng doanh số ${periodLabel}: <b class="mono" style="color:var(--leaf-500);">${money(grandTotal)}</b><br>
           Số khách hàng có giao dịch: <b>${ranked.length}</b>
         </div>
         <div class="card">
