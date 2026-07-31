@@ -563,6 +563,21 @@
     <div id="debtReportContent"></div>
   </div>
 </div>
+<!-- ============ MODAL: TRẢ HÀNG ============ -->
+<div class="overlay" id="returnModal">
+  <div class="sheet" style="max-height:85vh; overflow-y:auto;">
+    <button class="sheet-close" onclick="closeModal('returnModal')">✕</button>
+    <h3>↩️ Trả hàng: <span id="returnSaleCustomer"></span></h3>
+    <input type="hidden" id="returnSaleId">
+    <div id="returnItemsList"></div>
+    <div class="card-tight card" style="margin-top:12px;">
+      Tổng tiền trả lại: <b class="mono" id="returnTotalPreview">0đ</b>
+    </div>
+    <div style="margin-top:16px;">
+      <button class="btn btn-primary" onclick="confirmReturn()">Xác nhận trả hàng</button>
+    </div>
+  </div>
+</div>
 
 <!-- ============ MODAL: XẾP HẠNG DOANH SỐ KHÁCH HÀNG ============ -->
 <div class="overlay" id="customerStatsModal">
@@ -1263,6 +1278,94 @@ function reprintSale(saleId){
   if (!sale) return;
   renderInvoice(sale);
 }
+function openReturnModal(saleId){
+  const sale = sales.find(s => s.id === saleId);
+  if (!sale) return;
+  if (!sale.items || !sale.items.length){ alert('Đơn hàng này không có sản phẩm để trả.'); return; }
+  document.getElementById('returnSaleId').value = saleId;
+  document.getElementById('returnSaleCustomer').textContent = sale.customerName || 'Khách lẻ';
+  const box = document.getElementById('returnItemsList');
+  box.innerHTML = sale.items.map((it, idx) => `
+    <div class="prod-item">
+      <div style="flex:1;">
+        <div class="prod-name">${it.name}</div>
+        <div class="prod-meta">${money(it.price)} / ${it.unit || 'sp'} · Đã bán: ${it.qty}</div>
+      </div>
+      <div style="width:80px;">
+        <input type="number" min="0" max="${it.qty}" value="0" class="return-qty-input" data-idx="${idx}" data-price="${it.price}" onchange="updateReturnPreview()" style="text-align:center;">
+      </div>
+    </div>
+  `).join('');
+  updateReturnPreview();
+  openModal('returnModal');
+}
+
+function updateReturnPreview(){
+  let total = 0;
+  document.querySelectorAll('.return-qty-input').forEach(inp => {
+    const qty = parseFloat(inp.value) || 0;
+    const price = parseFloat(inp.dataset.price) || 0;
+    total += qty * price;
+  });
+  document.getElementById('returnTotalPreview').textContent = money(total);
+}
+
+function confirmReturn(){
+  const saleId = document.getElementById('returnSaleId').value;
+  const sale = sales.find(s => s.id === saleId);
+  if (!sale) return;
+
+  const returns = [];
+  let refundTotal = 0;
+  let invalid = false;
+  document.querySelectorAll('.return-qty-input').forEach(inp => {
+    const idx = parseInt(inp.dataset.idx);
+    const qty = parseFloat(inp.value) || 0;
+    if (qty > sale.items[idx].qty) invalid = true;
+    if (qty > 0){
+      returns.push({ idx, qty, item: sale.items[idx] });
+      refundTotal += qty * sale.items[idx].price;
+    }
+  });
+  if (invalid){ alert('Số lượng trả không được vượt quá số lượng đã bán.'); return; }
+  if (!returns.length){ alert('Nhập số lượng sản phẩm cần trả.'); return; }
+  if (!confirm('Xác nhận trả hàng, trừ doanh thu ' + money(refundTotal) + '?')) return;
+
+  const newItems = sale.items.map((it, idx) => {
+    const ret = returns.find(r => r.idx === idx);
+    if (!ret) return it;
+    return { ...it, qty: it.qty - ret.qty };
+  }).filter(it => it.qty > 0);
+  const newTotal = newItems.reduce((s,it) => s + it.price*it.qty, 0);
+
+  const batch = db.batch();
+  returns.forEach(r => {
+    if (r.item.productId){
+      batch.update(storeRef.collection('products').doc(r.item.productId), {
+        stock: firebase.firestore.FieldValue.increment(r.qty)
+      });
+    }
+  });
+  batch.update(storeRef.collection('sales').doc(saleId), {
+    items: newItems,
+    total: newTotal,
+    returnedAmount: firebase.firestore.FieldValue.increment(refundTotal)
+  });
+
+  if (sale.isDebt && sale.customerId){
+    const customer = customers.find(c => c.id === sale.customerId);
+    const debtBefore = customer ? (customer.debt||0) : 0;
+    const deduct = Math.min(refundTotal, debtBefore);
+    const custUpdate = { debt: firebase.firestore.FieldValue.increment(-deduct) };
+    if (debtBefore - deduct <= 0) custUpdate.debtSince = firebase.firestore.FieldValue.delete();
+    batch.update(storeRef.collection('customers').doc(sale.customerId), custUpdate);
+  }
+
+  batch.commit().then(() => {
+    closeModal('returnModal');
+    if (!sale.isDebt) alert('Đã cập nhật trả hàng. Nhớ hoàn lại tiền mặt cho khách: ' + money(refundTotal));
+  }).catch(e => alert('Lỗi: ' + e.message));
+}
 
 function checkout(){
   if (!cart.length) return;
@@ -1754,7 +1857,10 @@ function renderReports(){
       </div>
       <div style="text-align:right;">
         <div class="mono">${money(s.total)}</div>
-        <button class="btn btn-sm btn-ghost" style="margin-top:4px;" onclick="reprintSale('${s.id}')">🖨️ In</button>
+        <div style="display:flex; gap:4px; margin-top:4px; justify-content:flex-end;">
+          <button class="btn btn-sm btn-ghost" onclick="reprintSale('${s.id}')">🖨️ In</button>
+          <button class="btn btn-sm btn-ghost" onclick="openReturnModal('${s.id}')">↩️ Trả</button>
+        </div>
       </div>
     </div>
   `).join('') || '<div class="empty-state">Chưa có hoá đơn nào.</div>';
