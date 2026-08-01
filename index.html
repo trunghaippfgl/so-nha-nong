@@ -1055,23 +1055,35 @@ function startVoiceInput(inputId){
   }
   const recognition = new SpeechRecognition();
   recognition.lang = 'vi-VN';
-  recognition.interimResults = false;
+  recognition.interimResults = true;
+  recognition.continuous = true;
   recognition.maxAlternatives = 1;
   const btn = document.getElementById('mic-' + inputId);
-  if (btn) btn.textContent = '🔴';
+  const input = document.getElementById(inputId);
+  if (btn) btn.textContent = '⏹️';
+
+  let finalText = '';
   recognition.start();
+
   recognition.onresult = function(event){
-    const text = event.results[0][0].transcript;
-    document.getElementById(inputId).value = text;
-    if (btn) btn.textContent = '🎤';
+    let interim = '';
+    for (let i = event.resultIndex; i < event.results.length; i++){
+      const transcript = event.results[i][0].transcript;
+      if (event.results[i].isFinal){
+        finalText += transcript;
+      } else {
+        interim += transcript;
+      }
+    }
+    input.value = (finalText + interim).trim();
   };
   recognition.onerror = function(){
-    alert('Không nghe rõ, thử nói lại nhé.');
     if (btn) btn.textContent = '🎤';
   };
   recognition.onend = function(){
     if (btn) btn.textContent = '🎤';
   };
+  if (btn) btn.onclick = function(){ recognition.stop(); btn.onclick = function(){ startVoiceInput(inputId); }; };
 }
 
 function openAddProduct(){
