@@ -8,6 +8,7 @@
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#171310">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600;700&family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -338,6 +339,10 @@
     <div class="search-box">
       <input id="stockSearch" placeholder="Tìm theo tên, mã..." oninput="renderStockList()">
     </div>
+    <div style="margin-bottom:10px;">
+      <button class="btn btn-ghost" style="width:100%;" onclick="document.getElementById('excelImportInput').click()">📥 Nhập sản phẩm từ Excel</button>
+      <input type="file" id="excelImportInput" accept=".xlsx,.xls,.csv" style="display:none;" onchange="handleExcelImport(event)">
+    </div>
     <div class="card" id="stockList"></div>
   </div>
 
@@ -422,7 +427,10 @@
     <h3 id="productModalTitle">Thêm sản phẩm</h3>
     <input type="hidden" id="prodId">
     <label>Tên sản phẩm *</label>
-    <input id="prodName" placeholder="VD: Phân NPK 20-20-15">
+    <div style="display:flex; gap:6px;">
+      <input id="prodName" placeholder="VD: Phân NPK 20-20-15" style="flex:1;">
+      <button type="button" class="btn btn-ghost" id="mic-prodName" style="width:48px; flex-shrink:0;" onclick="startVoiceInput('prodName')">🎤</button>
+    </div>
     <label>Danh mục *</label>
     <select id="prodCategory">
       <option value="Thuốc BVTV">Thuốc bảo vệ thực vật</option>
@@ -1038,6 +1046,32 @@ function renderStockList(){
       </div>
     </div>
   `).join('');
+}
+function startVoiceInput(inputId){
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition){
+    alert('Trình duyệt này không hỗ trợ nhập bằng giọng nói. Vui lòng dùng Chrome.');
+    return;
+  }
+  const recognition = new SpeechRecognition();
+  recognition.lang = 'vi-VN';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+  const btn = document.getElementById('mic-' + inputId);
+  if (btn) btn.textContent = '🔴';
+  recognition.start();
+  recognition.onresult = function(event){
+    const text = event.results[0][0].transcript;
+    document.getElementById(inputId).value = text;
+    if (btn) btn.textContent = '🎤';
+  };
+  recognition.onerror = function(){
+    alert('Không nghe rõ, thử nói lại nhé.');
+    if (btn) btn.textContent = '🎤';
+  };
+  recognition.onend = function(){
+    if (btn) btn.textContent = '🎤';
+  };
 }
 
 function openAddProduct(){
