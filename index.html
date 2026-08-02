@@ -1085,6 +1085,74 @@ function startVoiceInput(inputId){
   };
   if (btn) btn.onclick = function(){ recognition.stop(); btn.onclick = function(){ startVoiceInput(inputId); }; };
 }
+function handleExcelImport(event){
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+      if (!rows.length){ alert('File không có dữ liệu.'); event.target.value = ''; return; }
+
+      function getVal(row, keys){
+        for (const k of Object.keys(row)){
+          const norm = k.trim().toLowerCase();
+          if (keys.includes(norm)) return row[k];
+        }
+        return '';
+      }
+
+      const products = rows.map(row => {
+        const name = String(getVal(row, ['tên sản phẩm','ten san pham','tên','name'])).trim();
+        const category = String(getVal(row, ['danh mục','danh muc','category'])).trim() || 'Khác';
+        const unit = String(getVal(row, ['đơn vị tính','don vi tinh','đơn vị','unit'])).trim() || 'Cái';
+        const sku = String(getVal(row, ['mã sku','ma sku','sku'])).trim();
+        const cost = parseFloat(getVal(row, ['giá nhập','gia nhap','cost'])) || 0;
+        const price = parseFloat(getVal(row, ['giá bán','gia ban','price'])) || 0;
+        const stock = parseFloat(getVal(row, ['tồn kho','ton kho','stock'])) || 0;
+        return { name, category, unit, sku, cost, price, stock };
+      }).filter(p => p.name);
+
+      if (!products.length){
+        alert('Không đọc được sản phẩm nào. Kiểm tra lại tiêu đề cột trong file Excel (VD: "Tên sản phẩm", "Giá bán"...).');
+        event.target.value = '';
+        return;
+      }
+      if (!confirm('Tìm thấy ' + products.length + ' sản phẩm trong file. Xác nhận nhập vào kho?')){
+        event.target.value = '';
+        return;
+      }
+
+      let batch = db.batch();
+      let count = 0;
+      const commits = [];
+      products.forEach(p => {
+        const ref = storeRef.collection('products').doc();
+        batch.set(ref, {
+          name: p.name, category: p.category, unit: p.unit, sku: p.sku,
+          cost: p.cost, price: p.price, stock: p.stock, lowThreshold: 5,
+          activeIngredient: '', expiry: null, supplier: '',
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        count++;
+        if (count % 400 === 0){ commits.push(batch.commit()); batch = db.batch(); }
+      });
+      commits.push(batch.commit());
+
+      Promise.all(commits).then(() => {
+        alert('Đã nhập thành công ' + products.length + ' sản phẩm!');
+        event.target.value = '';
+      }).catch(err => alert('Lỗi khi lưu: ' + err.message));
+    } catch (err){
+      alert('Lỗi đọc file: ' + err.message);
+      event.target.value = '';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
 
 function openAddProduct(){
   editingProductId = null;
