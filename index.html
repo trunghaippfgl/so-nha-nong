@@ -326,7 +326,7 @@
       </div>
     </div>
 
-    <button class="btn btn-primary" id="checkoutBtn" onclick="checkout()">Hoàn tất bán hàng</button>
+   <button class="btn btn-primary" id="checkoutBtn" onclick="openDraftOrder()">Xem đơn & Xác nhận</button>
   </div>
 
   <!-- ---- TAB: KHO HÀNG ---- -->
@@ -372,7 +372,7 @@
   <!-- ---- TAB: BÁO CÁO ---- -->
   <div class="screen" id="screen-bao-cao">
     <div class="section-title" style="margin-top:0;">Cảnh báo tồn kho</div>
-    <div class="card" id="stockAlertBox" style="margin-bottom:16px;"></div>
+    <div class="card" id="stockAlertBox" style="margin-bottom:16px; max-height:280px; overflow-y:auto;"></div>
     <div class="stat-row" style="margin-bottom:10px;">
       <div class="stat wheat"><div class="label">Doanh thu hôm nay</div><div class="value mono" id="statTodayRevenue">0đ</div></div>
       <div class="stat leaf"><div class="label">Đã thu hôm nay</div><div class="value mono" id="statTodayCollected">0đ</div></div>
@@ -583,6 +583,18 @@
     </div>
     <div style="margin-top:16px;">
       <button class="btn btn-primary" onclick="confirmReturn()">Xác nhận trả hàng</button>
+    </div>
+  </div>
+</div>
+<!-- ============ MODAL: XEM TRƯỚC ĐƠN NHÁP ============ -->
+<div class="overlay" id="draftOrderModal">
+  <div class="sheet" style="max-height:85vh; overflow-y:auto;">
+    <button class="sheet-close" onclick="closeModal('draftOrderModal')">✕</button>
+    <h3>📋 Xem trước đơn hàng</h3>
+    <div id="draftOrderContent"></div>
+    <div style="display:flex; gap:8px; margin-top:16px;">
+      <button class="btn btn-ghost" style="flex:1;" onclick="closeModal('draftOrderModal')">✏️ Sửa lại</button>
+      <button class="btn btn-primary" style="flex:1;" onclick="confirmDraftOrder()">✅ Xác nhận, xuất đơn</button>
     </div>
   </div>
 </div>
@@ -1480,6 +1492,60 @@ function confirmReturn(){
     closeModal('returnModal');
     if (!sale.isDebt) alert('Đã cập nhật trả hàng. Nhớ hoàn lại tiền mặt cho khách: ' + money(refundTotal));
   }).catch(e => alert('Lỗi: ' + e.message));
+}
+function openDraftOrder(){
+  if (!cart.length) return;
+  const total = cart.reduce((s,c) => s + c.price*c.qty, 0);
+  const customerId = document.getElementById('posCustomer').value || null;
+  const customer = customers.find(c => c.id === customerId);
+  const isDebt = document.getElementById('posIsDebt').checked && customerId;
+  const paidNow = isDebt ? (parseFloat(document.getElementById('posPaidNow').value) || 0) : total;
+  const debtAmount = isDebt ? Math.max(0, total - paidNow) : 0;
+
+  let html = `
+    <div class="card-tight card" style="margin-bottom:12px;">
+      Khách hàng: <b>${customer ? customer.name : 'Khách lẻ'}</b>
+    </div>
+    <div class="card">
+  `;
+  cart.forEach(c => {
+    html += `
+      <div class="prod-item">
+        <div style="flex:1;">
+          <div class="prod-name">${c.name}</div>
+          <div class="prod-meta">${c.qty} ${c.unit} x ${money(c.price)}</div>
+        </div>
+        <div class="mono">${money(c.price*c.qty)}</div>
+      </div>
+    `;
+  });
+  html += '</div>';
+  html += `
+    <div class="cart-total grand" style="margin-top:10px;">
+      <span>Tổng cộng</span><span class="mono">${money(total)}</span>
+    </div>
+  `;
+  if (isDebt){
+    html += `
+      <div class="card-tight card" style="margin-top:10px; color:var(--rust-500);">
+        Khách trả trước: <b class="mono">${money(paidNow)}</b><br>
+        Còn nợ lại: <b class="mono">${money(debtAmount)}</b>
+      </div>
+    `;
+  } else {
+    html += `
+      <div class="card-tight card" style="margin-top:10px; color:var(--leaf-500);">
+        Khách thanh toán đủ: <b class="mono">${money(total)}</b>
+      </div>
+    `;
+  }
+  document.getElementById('draftOrderContent').innerHTML = html;
+  openModal('draftOrderModal');
+}
+
+function confirmDraftOrder(){
+  closeModal('draftOrderModal');
+  checkout();
 }
 
 function checkout(){
