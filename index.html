@@ -1100,7 +1100,7 @@ function handleExcelImport(event){
       function getVal(row, keys){
         for (const k of Object.keys(row)){
           const norm = k.trim().toLowerCase();
-          if (keys.includes(norm)) return row[k];
+          if (keys.some(key => norm.includes(key))) return row[k];
         }
         return '';
       }
