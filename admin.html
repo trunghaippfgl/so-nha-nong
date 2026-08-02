@@ -47,6 +47,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyAvmg4IDMewdN4GZdy0Z-iYqZXSh67gi5I",
@@ -59,6 +60,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+const functionsInstance = firebase.app().functions('us-central1');
 
 const ADMIN_UID = "1T9haVRTPohU8QlEFnefVJ9SYk02";
 let allStores = [];
@@ -124,6 +126,9 @@ function renderStores(){
           <button class="btn-toggle" onclick="togglePaid('${s.id}', ${!isPaid})">
             ${isPaid ? 'Huỷ kích hoạt' : 'Kích hoạt'}
           </button>
+          <button class="btn-toggle" style="background:#8a3a3a; color:#fff; margin-left:4px;" onclick="resetPassword('${s.id}', '${(s.storeName||'').replace(/'/g,"\\'")}')">
+            Đặt lại MK
+          </button>
         </td>
       </tr>
     `;
@@ -135,6 +140,19 @@ function togglePaid(storeId, newValue){
   db.collection('stores').doc(storeId).update({ paid: newValue }).then(() => {
     loadStores();
   }).catch(e => alert('Lỗi: ' + e.message));
+}
+function resetPassword(storeId, storeName){
+  const newPass = prompt('Nhập mật khẩu MỚI cho cửa hàng "' + storeName + '" (tối thiểu 6 ký tự):');
+  if (!newPass) return;
+  if (newPass.length < 6){ alert('Mật khẩu cần tối thiểu 6 ký tự.'); return; }
+  if (!confirm('Xác nhận đặt mật khẩu mới cho "' + storeName + '"?')) return;
+
+  const resetFn = functionsInstance.httpsCallable('resetShopPassword');
+  resetFn({ storeId, newPassword: newPass }).then(() => {
+    alert('Đặt lại mật khẩu thành công! Mật khẩu mới: ' + newPass + '\n\nBáo lại cho chủ cửa hàng nhé.');
+  }).catch(e => {
+    alert('Lỗi: ' + e.message);
+  });
 }
 </script>
 </body>
