@@ -258,6 +258,9 @@
       <input id="loginEmail" type="text" placeholder="VD: ĐLNN ...">
       <label>Mật khẩu</label>
       <input id="loginPass" type="password" placeholder="••••••••">
+      <div style="text-align:right; margin-top:6px;">
+        <button onclick="showForgotPassword()" style="background:none; border:none; color:var(--wheat-400); font-size:12px; font-family:inherit; cursor:pointer; text-decoration:underline;">Quên mật khẩu?</button>
+      </div>
       <div id="loginErr" class="auth-err"></div>
       <button class="btn btn-primary" id="loginBtn" onclick="doLogin()" style="margin-top:14px;">Đăng nhập</button>
     </div>
@@ -724,6 +727,31 @@
     <div style="margin-top:16px;">
       <button class="btn btn-primary" onclick="saveStoreSettings()">Lưu thông tin</button>
     </div>
+
+    <div class="ledger-rule" style="margin:20px 0;"></div>
+
+    <h3>Đổi mật khẩu</h3>
+    <label>Mật khẩu hiện tại</label>
+    <input id="changePassCurrent" type="password" placeholder="Nhập mật khẩu đang dùng">
+    <label>Mật khẩu mới</label>
+    <input id="changePassNew" type="password" placeholder="Tối thiểu 6 ký tự">
+    <label>Nhập lại mật khẩu mới</label>
+    <input id="changePassConfirm" type="password" placeholder="Nhập lại">
+    <div style="margin-top:16px;">
+      <button class="btn btn-primary" onclick="changePassword()">Cập nhật mật khẩu</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: QUÊN MẬT KHẨU ============ -->
+<div class="overlay" id="forgotPasswordModal">
+  <div class="sheet">
+    <button class="sheet-close" onclick="closeModal('forgotPasswordModal')">✕</button>
+    <h3>Quên mật khẩu?</h3>
+    <p style="line-height:1.6;">Vui lòng liên hệ trực tiếp để được hỗ trợ cấp lại mật khẩu mới:</p>
+    <div class="card-tight card" style="margin-top:10px;">
+      📞 Số điện thoại / Zalo hỗ trợ: <b>[0905170184]</b>
+    </div>
   </div>
 </div>
 
@@ -898,6 +926,37 @@ function saveStoreSettings(){
     document.getElementById('storeGreeting').textContent = 'Xin chào, ' + name;
     closeModal('storeSettingsModal');
   }).catch(e => alert('Lỗi: ' + e.message));
+}
+function changePassword(){
+  const current = document.getElementById('changePassCurrent').value;
+  const newPass = document.getElementById('changePassNew').value;
+  const confirmPass = document.getElementById('changePassConfirm').value;
+  if (!current || !newPass || !confirmPass){ alert('Vui lòng điền đầy đủ các ô.'); return; }
+  if (newPass.length < 6){ alert('Mật khẩu mới cần tối thiểu 6 ký tự.'); return; }
+  if (newPass !== confirmPass){ alert('Mật khẩu mới nhập lại không khớp.'); return; }
+
+  const user = auth.currentUser;
+  if (!user){ alert('Vui lòng đăng nhập lại.'); return; }
+
+  const credential = firebase.auth.EmailAuthProvider.credential(user.email, current);
+  user.reauthenticateWithCredential(credential).then(() => {
+    return user.updatePassword(newPass);
+  }).then(() => {
+    alert('Đổi mật khẩu thành công!');
+    document.getElementById('changePassCurrent').value = '';
+    document.getElementById('changePassNew').value = '';
+    document.getElementById('changePassConfirm').value = '';
+  }).catch(e => {
+    if (e.code === 'auth/wrong-password'){
+      alert('Mật khẩu hiện tại không đúng.');
+    } else {
+      alert('Lỗi: ' + e.message);
+    }
+  });
+}
+
+function showForgotPassword(){
+  openModal('forgotPasswordModal');
 }
 
 auth.onAuthStateChanged(user => {
