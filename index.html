@@ -1113,7 +1113,8 @@ function handleExcelImport(event){
         const cost = parseFloat(getVal(row, ['giá nhập','gia nhap','cost'])) || 0;
         const price = parseFloat(getVal(row, ['giá bán','gia ban','price'])) || 0;
         const stock = parseFloat(getVal(row, ['tồn kho','ton kho','stock'])) || 0;
-        return { name, category, unit, sku, cost, price, stock };
+        const activeIngredient = String(getVal(row, ['hoạt chất','hoat chat','active ingredient'])).trim();
+        return { name, category, unit, sku, cost, price, stock, activeIngredient };
       }).filter(p => p.name);
 
       if (!products.length){
@@ -1134,7 +1135,7 @@ function handleExcelImport(event){
         batch.set(ref, {
           name: p.name, category: p.category, unit: p.unit, sku: p.sku,
           cost: p.cost, price: p.price, stock: p.stock, lowThreshold: 5,
-          activeIngredient: '', expiry: null, supplier: '',
+          activeIngredient: p.activeIngredient, expiry: null, supplier: '',
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         count++;
