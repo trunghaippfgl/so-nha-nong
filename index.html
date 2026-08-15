@@ -362,6 +362,9 @@
 
     <div id="debtCustomerSection">
       <button class="btn btn-ghost" style="margin-bottom:10px;" onclick="openAddCustomer()">+ Thêm khách hàng mới</button>
+      <div class="search-box" style="margin-bottom:10px;">
+        <input id="debtSearch" placeholder="Tìm theo tên, số điện thoại..." oninput="renderDebtList()">
+      </div>
       <div class="section-title">Danh sách khách nợ</div>
       <div class="card" id="debtList"></div>
     </div>
