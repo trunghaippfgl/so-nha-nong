@@ -1669,7 +1669,15 @@ function renderDebtList(){
     box.innerHTML = '<div class="empty-state"><div class="ic">📒</div>Chưa có khách hàng nào.</div>';
     return;
   }
-  box.innerHTML = customers.map(c => `
+  const keyword = (document.getElementById('debtSearch').value || '').trim().toLowerCase();
+  const filtered = customers.filter(c =>
+    !keyword || c.name.toLowerCase().includes(keyword) || (c.phone||'').toLowerCase().includes(keyword)
+  );
+  if (!filtered.length){
+    box.innerHTML = '<div class="empty-state"><div class="ic">🔍</div>Không tìm thấy khách hàng phù hợp.</div>';
+    return;
+  }
+  box.innerHTML = filtered.map(c => `
     <div class="prod-item" style="align-items:flex-start;">
       <div class="prod-ic">👤</div>
       <div style="flex:1;">
