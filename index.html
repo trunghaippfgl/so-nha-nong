@@ -344,6 +344,7 @@
     </div>
     <div style="display:flex; gap:8px; margin-bottom:10px;">
       <button class="btn btn-ghost" style="flex:1;" onclick="document.getElementById('excelImportInput').click()">📥 Nhập Excel</button>
+      <button class="btn btn-leaf" style="flex:1; min-width:150px;" onclick="openBulkStockIn()">📋 Phiếu nhập nhiều SP </button>
       <button class="btn btn-ghost" style="flex:1;" onclick="openStocktake()">🧮 Kiểm kê kho</button>
       <input type="file" id="excelImportInput" accept=".xlsx,.xls,.csv" style="display:none;" onchange="handleExcelImport(event)">
     </div>
@@ -573,6 +574,126 @@
     <div style="margin-top:16px;">
       <button class="btn btn-leaf" id="stockInConfirmBtn" onclick="confirmStockIn()">Lưu phiếu & nhập kho</button>
     </div>
+  </div>
+</div>
+<!-- ============ MODAL: PHIẾU NHẬP NHIỀU SẢN PHẨM ============ -->
+<div class="overlay" id="bulkStockInModal">
+  <div class="sheet" style="max-height:92vh; overflow-y:auto;">
+    <button class="sheet-close" onclick="closeModal('bulkStockInModal')">✕</button>
+
+    <h3>📋 Phiếu nhập nhiều sản phẩm</h3>
+
+    <label>Nhà cung cấp *</label>
+    <select id="bulkStockInSupplier">
+      <option value="">-- Chọn nhà cung cấp --</option>
+    </select>
+
+    <div class="ledger-rule"></div>
+
+    <div class="card-tight card">
+      <div style="font-weight:700; color:var(--wheat-400); margin-bottom:10px;">
+        + Thêm mặt hàng vào phiếu
+      </div>
+
+      <label>Sản phẩm *</label>
+      <select id="bulkStockInProduct"
+              onchange="onBulkStockInProductChange()">
+        <option value="">-- Chọn sản phẩm --</option>
+      </select>
+
+      <div class="row">
+        <div>
+          <label>Đơn vị nhập *</label>
+          <select id="bulkStockInUnit">
+            <option value="">-- Chọn đơn vị --</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Số lượng *</label>
+          <input id="bulkStockInQty"
+                 type="number"
+                 min="0"
+                 step="0.001"
+                 inputmode="decimal"
+                 placeholder="0">
+        </div>
+      </div>
+
+      <label>Giá nhập / đơn vị đang chọn *</label>
+      <input id="bulkStockInCost"
+             type="number"
+             min="0"
+             inputmode="decimal"
+             placeholder="0">
+
+      <div class="row">
+        <div>
+          <label>Số lô</label>
+          <input id="bulkStockInLot"
+                 placeholder="VD: AT2608">
+        </div>
+
+        <div>
+          <label>Hạn sử dụng</label>
+          <input id="bulkStockInExpiry"
+                 type="date">
+        </div>
+      </div>
+
+      <button class="btn btn-primary"
+              style="margin-top:12px;"
+              onclick="addBulkStockInItem()">
+        + Thêm vào phiếu
+      </button>
+    </div>
+
+    <div class="section-title">Các mặt hàng trong phiếu</div>
+
+    <div class="card" id="bulkStockInItems">
+      <div class="empty-state" style="padding:18px;">
+        Chưa có sản phẩm trong phiếu nhập.
+      </div>
+    </div>
+
+    <label>Đã thanh toán cho NCC</label>
+    <input id="bulkStockInPaid"
+           type="number"
+           min="0"
+           inputmode="decimal"
+           placeholder="0"
+           oninput="updateBulkStockInSummary()">
+
+    <label>Ghi chú phiếu nhập</label>
+    <textarea id="bulkStockInNote"
+              rows="2"
+              placeholder="VD: Hóa đơn số 125, giao hàng đợt tháng 8..."></textarea>
+
+    <div class="card-tight card"
+         style="margin-top:12px; line-height:1.8;">
+
+      <div>
+        Tổng tiền hàng:
+        <b class="mono"
+           id="bulkStockInTotal"
+           style="float:right;">0đ</b>
+      </div>
+
+      <div>
+        Còn nợ NCC:
+        <b class="mono"
+           id="bulkStockInDebt"
+           style="float:right; color:var(--rust-500);">0đ</b>
+      </div>
+    </div>
+
+    <button class="btn btn-leaf"
+            id="bulkStockInConfirmBtn"
+            style="margin-top:12px;"
+            onclick="confirmBulkStockIn()">
+      ✅ Lưu phiếu & nhập kho
+    </button>
+
   </div>
 </div>
 <!-- ============ MODAL: CHI TIẾT LÔ ============ -->
@@ -942,6 +1063,7 @@ let migrationStoreDataV21 = null;
 let stocktakeDraft = {};
 let stocktakeBaseline = {};
 let stocktakeHistory = [];
+let bulkStockInItems = [];
 let storeListenersStarted = false;
 let authInitToken = 0;
 function numberToVietnameseWords(number){
@@ -2015,7 +2137,998 @@ function confirmStockIn(){
     alert('Đã nhập ' + qty + ' ' + u.name + '. Giá vốn bình quân mới: ' + money(avgCost) + '/' + p.unit);
   }).catch(e => alert('Lỗi nhập kho: ' + e.message)).finally(() => { btn.disabled=false; btn.textContent='Lưu phiếu & nhập kho'; });
 }
+// ============================================================
+// PHIẾU NHẬP NHIỀU SẢN PHẨM
+// ============================================================
 
+function fillBulkStockInSuppliers(){
+  const sel = document.getElementById('bulkStockInSupplier');
+  if (!sel) return;
+
+  sel.innerHTML =
+    '<option value="">-- Chọn nhà cung cấp --</option>' +
+    suppliers.map(s =>
+      `<option value="${s.id}">${escapeHtmlV211(s.name)}</option>`
+    ).join('');
+}
+
+
+function fillBulkStockInProducts(){
+  const sel = document.getElementById('bulkStockInProduct');
+  if (!sel) return;
+
+  const sorted = products.slice().sort(
+    (a,b) => (a.name || '').localeCompare(b.name || '', 'vi')
+  );
+
+  sel.innerHTML =
+    '<option value="">-- Chọn sản phẩm --</option>' +
+    sorted.map(p =>
+      `<option value="${p.id}">${escapeHtmlV211(p.name)}</option>`
+    ).join('');
+}
+
+
+function openBulkStockIn(){
+
+  bulkStockInItems = [];
+
+  fillBulkStockInSuppliers();
+  fillBulkStockInProducts();
+
+  document.getElementById('bulkStockInSupplier').value = '';
+  document.getElementById('bulkStockInProduct').value = '';
+
+  document.getElementById('bulkStockInUnit').innerHTML =
+    '<option value="">-- Chọn đơn vị --</option>';
+
+  document.getElementById('bulkStockInQty').value = '';
+  document.getElementById('bulkStockInCost').value = '';
+  document.getElementById('bulkStockInLot').value = '';
+  document.getElementById('bulkStockInExpiry').value = '';
+
+  document.getElementById('bulkStockInPaid').value = '';
+  document.getElementById('bulkStockInNote').value = '';
+
+  renderBulkStockInItems();
+
+  openModal('bulkStockInModal');
+}
+
+
+function onBulkStockInProductChange(){
+
+  const productId =
+    document.getElementById('bulkStockInProduct').value;
+
+  const p = products.find(x => x.id === productId);
+
+  const sel =
+    document.getElementById('bulkStockInUnit');
+
+  if (!p){
+
+    sel.innerHTML =
+      '<option value="">-- Chọn đơn vị --</option>';
+
+    return;
+  }
+
+  sel.innerHTML = allProductUnits(p).map(u =>
+
+    `<option value="${encodeURIComponent(u.name)}">
+
+      ${escapeHtmlV211(u.name)}
+
+      ${u.factor !== 1
+        ? ' (1 = ' +
+          u.factor +
+          ' ' +
+          escapeHtmlV211(p.unit) +
+          ')'
+        : ''}
+
+    </option>`
+
+  ).join('');
+}
+
+
+function getBulkStockInSelectedUnit(p){
+
+  const encoded =
+    document.getElementById('bulkStockInUnit').value;
+
+  const name =
+    encoded ? decodeURIComponent(encoded) : '';
+
+  return allProductUnits(p).find(
+    u => u.name === name
+  ) || {
+    name:p.unit,
+    factor:1
+  };
+}
+
+
+function addBulkStockInItem(){
+
+  if (bulkStockInItems.length >= 100){
+
+    alert('Một phiếu tối đa 100 dòng hàng.');
+
+    return;
+  }
+
+  const productId =
+    document.getElementById('bulkStockInProduct').value;
+
+  const p =
+    products.find(x => x.id === productId);
+
+  if (!p){
+
+    alert('Vui lòng chọn sản phẩm.');
+
+    return;
+  }
+
+  const u =
+    getBulkStockInSelectedUnit(p);
+
+  const qty =
+    parseFloat(
+      document.getElementById('bulkStockInQty').value
+    ) || 0;
+
+  const costPerSelected =
+    parseFloat(
+      document.getElementById('bulkStockInCost').value
+    ) || 0;
+
+  const lotNumber =
+    document.getElementById('bulkStockInLot')
+      .value.trim();
+
+  const expiry =
+    document.getElementById('bulkStockInExpiry')
+      .value || null;
+
+
+  if (qty <= 0){
+
+    alert('Số lượng nhập phải lớn hơn 0.');
+
+    return;
+  }
+
+
+  if (costPerSelected <= 0){
+
+    alert('Giá nhập phải lớn hơn 0.');
+
+    return;
+  }
+
+
+  const factor =
+    Number(u.factor) || 1;
+
+  const baseQty =
+    qty * factor;
+
+  const unitCostBase =
+    costPerSelected / factor;
+
+  const lineTotal =
+    qty * costPerSelected;
+
+
+  bulkStockInItems.push({
+
+    tempId:
+      Date.now() +
+      '_' +
+      Math.random()
+        .toString(36)
+        .slice(2,8),
+
+    productId:p.id,
+
+    productName:p.name,
+
+    qty,
+
+    unit:u.name,
+
+    factor,
+
+    baseQty,
+
+    cost:costPerSelected,
+
+    unitCostBase,
+
+    lotNumber,
+
+    expiry,
+
+    lineTotal,
+
+    baseUnit:p.unit
+  });
+
+
+  // Xóa dữ liệu dòng vừa nhập,
+  // giữ nguyên sản phẩm để nhập dòng tiếp nhanh hơn
+
+  document.getElementById('bulkStockInQty').value = '';
+
+  document.getElementById('bulkStockInCost').value = '';
+
+  document.getElementById('bulkStockInLot').value = '';
+
+  document.getElementById('bulkStockInExpiry').value = '';
+
+
+  renderBulkStockInItems();
+}
+
+
+function removeBulkStockInItem(tempId){
+
+  bulkStockInItems =
+    bulkStockInItems.filter(
+      x => x.tempId !== tempId
+    );
+
+  renderBulkStockInItems();
+}
+
+
+function getBulkStockInTotal(){
+
+  return bulkStockInItems.reduce(
+    (sum,x) =>
+      sum + Number(x.lineTotal || 0),
+    0
+  );
+}
+
+
+function updateBulkStockInSummary(){
+
+  const total =
+    getBulkStockInTotal();
+
+  const paidRaw =
+    document.getElementById('bulkStockInPaid')
+      .value.trim();
+
+  const paid =
+    paidRaw === ''
+      ? 0
+      : (parseFloat(paidRaw) || 0);
+
+  document.getElementById(
+    'bulkStockInTotal'
+  ).textContent =
+    money(total);
+
+  document.getElementById(
+    'bulkStockInDebt'
+  ).textContent =
+    money(
+      Math.max(0, total - paid)
+    );
+}
+
+
+function renderBulkStockInItems(){
+
+  const box =
+    document.getElementById('bulkStockInItems');
+
+  if (!box) return;
+
+
+  if (!bulkStockInItems.length){
+
+    box.innerHTML =
+      '<div class="empty-state" style="padding:18px;">' +
+      'Chưa có sản phẩm trong phiếu nhập.' +
+      '</div>';
+
+  } else {
+
+    box.innerHTML =
+      bulkStockInItems.map((x,i) => `
+
+        <div class="prod-item"
+             style="align-items:flex-start;">
+
+          <div style="
+              width:26px;
+              color:var(--wheat-400);
+              font-weight:700;">
+            ${i + 1}
+          </div>
+
+          <div style="flex:1; min-width:0;">
+
+            <div class="prod-name">
+              ${escapeHtmlV211(x.productName)}
+            </div>
+
+            <div class="prod-meta">
+
+              ${x.qty.toLocaleString('vi-VN')}
+              ${escapeHtmlV211(x.unit)}
+
+              × ${money(x.cost)}
+
+              = <b>${money(x.lineTotal)}</b>
+
+            </div>
+
+            <div class="prod-meta">
+
+              Vào kho:
+              ${x.baseQty.toLocaleString('vi-VN')}
+              ${escapeHtmlV211(x.baseUnit)}
+
+              · Giá vốn nhập:
+              ${money(x.unitCostBase)}
+              /
+              ${escapeHtmlV211(x.baseUnit)}
+
+            </div>
+
+            <div class="prod-meta">
+
+              Lô:
+              ${escapeHtmlV211(
+                x.lotNumber || '—'
+              )}
+
+              · HSD:
+              ${escapeHtmlV211(
+                x.expiry || '—'
+              )}
+
+            </div>
+
+          </div>
+
+          <button
+              class="btn btn-sm btn-danger"
+              style="width:auto;"
+              onclick="
+                removeBulkStockInItem(
+                  '${x.tempId}'
+                )
+              ">
+            Xóa
+          </button>
+
+        </div>
+
+      `).join('');
+  }
+
+
+  updateBulkStockInSummary();
+}
+
+
+
+// ============================================================
+// XÁC NHẬN PHIẾU NHẬP
+// ============================================================
+
+async function confirmBulkStockIn(){
+
+  const btn =
+    document.getElementById(
+      'bulkStockInConfirmBtn'
+    );
+
+  if (btn.disabled) return;
+
+
+  const supplierId =
+    document.getElementById(
+      'bulkStockInSupplier'
+    ).value;
+
+
+  const supplier =
+    suppliers.find(
+      s => s.id === supplierId
+    );
+
+
+  if (!supplierId || !supplier){
+
+    alert(
+      'Vui lòng chọn nhà cung cấp.'
+    );
+
+    return;
+  }
+
+
+  if (!bulkStockInItems.length){
+
+    alert(
+      'Phiếu nhập chưa có sản phẩm.'
+    );
+
+    return;
+  }
+
+
+  // Chụp lại dữ liệu phiếu trước khi lưu
+
+  const itemsSnapshot =
+    bulkStockInItems.map(
+      x => ({...x})
+    );
+
+
+  const total =
+    itemsSnapshot.reduce(
+      (sum,x) =>
+        sum + Number(x.lineTotal || 0),
+      0
+    );
+
+
+  const paidRaw =
+    document.getElementById(
+      'bulkStockInPaid'
+    ).value.trim();
+
+
+  const paid =
+    paidRaw === ''
+      ? 0
+      : (parseFloat(paidRaw) || 0);
+
+
+  if (paid < 0 || paid > total){
+
+    alert(
+      'Số tiền đã trả phải từ 0 đến tổng tiền nhập.'
+    );
+
+    return;
+  }
+
+
+  const supplierDebt =
+    total - paid;
+
+
+  const note =
+    document.getElementById(
+      'bulkStockInNote'
+    ).value.trim();
+
+
+  const receiptNo =
+    'PN-' + Date.now();
+
+
+  const receiptRef =
+    storeRef.collection(
+      'purchaseReceipts'
+    ).doc();
+
+
+
+  // ------------------------------------------------
+  // Gom các dòng cùng sản phẩm
+  // để tính giá vốn bình quân chính xác một lần
+  // ------------------------------------------------
+
+  const grouped = {};
+
+
+  itemsSnapshot.forEach(x => {
+
+    if (!grouped[x.productId]){
+
+      grouped[x.productId] = {
+        baseQty:0,
+        value:0
+      };
+    }
+
+    grouped[x.productId].baseQty +=
+      Number(x.baseQty) || 0;
+
+    grouped[x.productId].value +=
+      Number(x.baseQty || 0) *
+      Number(x.unitCostBase || 0);
+
+  });
+
+
+  const productIds =
+    Object.keys(grouped);
+
+
+  const productRefs =
+    productIds.map(
+      id =>
+        storeRef
+          .collection('products')
+          .doc(id)
+    );
+
+
+  const suppRef =
+    storeRef
+      .collection('suppliers')
+      .doc(supplierId);
+
+
+
+  btn.disabled = true;
+
+  btn.textContent =
+    'Đang lưu phiếu...';
+
+
+
+  try {
+
+
+    // Dùng Transaction để tránh tồn kho
+    // bị ghi đè nếu đang có giao dịch khác.
+
+    await db.runTransaction(
+      async tx => {
+
+
+        // Đọc tất cả sản phẩm trước
+
+        const productDocs =
+          await Promise.all(
+            productRefs.map(
+              ref => tx.get(ref)
+            )
+          );
+
+
+        // Đọc NCC trước khi bắt đầu ghi
+
+        const suppDoc =
+          await tx.get(suppRef);
+
+
+        if (!suppDoc.exists){
+
+          throw new Error(
+            'Nhà cung cấp không còn tồn tại.'
+          );
+        }
+
+
+        for (
+          let i = 0;
+          i < productDocs.length;
+          i++
+        ){
+
+          if (!productDocs[i].exists){
+
+            throw new Error(
+              'Có sản phẩm trong phiếu không còn tồn tại.'
+            );
+          }
+        }
+
+
+
+        // ------------------------------------------
+        // Lưu phiếu nhập chính
+        // ------------------------------------------
+
+        const receiptItems =
+          itemsSnapshot.map(x => ({
+
+            productId:x.productId,
+
+            productName:x.productName,
+
+            qty:x.qty,
+
+            unit:x.unit,
+
+            factor:x.factor,
+
+            baseQty:x.baseQty,
+
+            cost:x.cost,
+
+            unitCostBase:
+              x.unitCostBase,
+
+            lotNumber:
+              x.lotNumber || '',
+
+            expiry:
+              x.expiry || null,
+
+            lineTotal:
+              x.lineTotal,
+
+            baseUnit:
+              x.baseUnit
+
+          }));
+
+
+        tx.set(
+          receiptRef,
+          {
+
+            receiptNo,
+
+            supplierId,
+
+            supplierName:
+              supplier.name,
+
+            items:
+              receiptItems,
+
+            total,
+
+            paidAmount:
+              paid,
+
+            debtAmount:
+              supplierDebt,
+
+            note,
+
+            itemCount:
+              receiptItems.length,
+
+            createdAt:
+              firebase.firestore
+                .FieldValue
+                .serverTimestamp()
+
+          }
+        );
+
+
+
+        // ------------------------------------------
+        // Cập nhật tồn + giá vốn từng sản phẩm
+        // ------------------------------------------
+
+        productDocs.forEach(
+          (doc,i) => {
+
+
+            const id =
+              productIds[i];
+
+
+            const data =
+              doc.data() || {};
+
+
+            const g =
+              grouped[id];
+
+
+            const oldStock =
+              Number(data.stock) || 0;
+
+
+            const oldCost =
+              Number(
+                data.avgCost ??
+                data.cost ??
+                0
+              ) || 0;
+
+
+            const newStock =
+              oldStock +
+              g.baseQty;
+
+
+            const avgCost =
+              newStock > 0
+
+                ? (
+                    (
+                      oldStock *
+                      oldCost
+                    ) +
+                    g.value
+                  ) /
+                  newStock
+
+                : 0;
+
+
+            tx.update(
+              productRefs[i],
+              {
+
+                stock:
+                  newStock,
+
+                cost:
+                  avgCost,
+
+                avgCost:
+                  avgCost,
+
+                updatedAt:
+                  firebase.firestore
+                    .FieldValue
+                    .serverTimestamp()
+
+              }
+            );
+
+          }
+        );
+
+
+
+        // ------------------------------------------
+        // Tạo lô + nhật ký kho cho từng dòng
+        // ------------------------------------------
+
+        itemsSnapshot.forEach(x => {
+
+
+          const lotRef =
+            storeRef
+              .collection(
+                'inventoryLots'
+              )
+              .doc();
+
+
+          const logRef =
+            storeRef
+              .collection(
+                'stockLogs'
+              )
+              .doc();
+
+
+
+          tx.set(
+            lotRef,
+            {
+
+              productId:
+                x.productId,
+
+              productName:
+                x.productName,
+
+              lotNumber:
+                x.lotNumber || '',
+
+              expiry:
+                x.expiry || null,
+
+              qtyInitial:
+                x.baseQty,
+
+              qtyRemaining:
+                x.baseQty,
+
+              baseUnit:
+                x.baseUnit,
+
+              unitCost:
+                x.unitCostBase,
+
+              supplierId,
+
+              supplierName:
+                supplier.name,
+
+              purchaseReceiptId:
+                receiptRef.id,
+
+              createdAt:
+                firebase.firestore
+                  .FieldValue
+                  .serverTimestamp()
+
+            }
+          );
+
+
+          tx.set(
+            logRef,
+            {
+
+              type:
+                'purchase',
+
+              productId:
+                x.productId,
+
+              productName:
+                x.productName,
+
+              qty:
+                x.baseQty,
+
+              unit:
+                x.baseUnit,
+
+              cost:
+                x.unitCostBase,
+
+              lotNumber:
+                x.lotNumber || '',
+
+              expiry:
+                x.expiry || null,
+
+              referenceId:
+                receiptRef.id,
+
+              createdAt:
+                firebase.firestore
+                  .FieldValue
+                  .serverTimestamp()
+
+            }
+          );
+
+        });
+
+
+
+        // ------------------------------------------
+        // Công nợ NCC
+        // ------------------------------------------
+
+        if (supplierDebt > 0){
+
+
+          const oldDebt =
+            Number(
+              suppDoc.data().debt || 0
+            );
+
+
+          const suppUpdate = {
+
+            debt:
+              oldDebt +
+              supplierDebt
+
+          };
+
+
+          if (oldDebt <= 0){
+
+            suppUpdate.debtSince =
+              firebase.firestore
+                .FieldValue
+                .serverTimestamp();
+
+          }
+
+
+          tx.update(
+            suppRef,
+            suppUpdate
+          );
+
+
+          tx.set(
+            storeRef
+              .collection(
+                'supplierDebtLedger'
+              )
+              .doc(),
+
+            {
+
+              supplierId,
+
+              supplierName:
+                supplier.name,
+
+              type:
+                'purchase',
+
+              debit:
+                supplierDebt,
+
+              credit:
+                0,
+
+              description:
+                'Phiếu nhập ' +
+                receiptNo +
+                ' · ' +
+                itemsSnapshot.length +
+                ' dòng hàng',
+
+              referenceId:
+                receiptRef.id,
+
+              createdAt:
+                firebase.firestore
+                  .FieldValue
+                  .serverTimestamp()
+
+            }
+          );
+
+        }
+
+      }
+    );
+
+
+
+    bulkStockInItems = [];
+
+
+    closeModal(
+      'bulkStockInModal'
+    );
+
+
+    alert(
+
+      'Đã lưu ' +
+      receiptNo +
+
+      '\nTổng tiền: ' +
+      money(total) +
+
+      '\nĐã trả: ' +
+      money(paid) +
+
+      '\nCòn nợ NCC: ' +
+      money(supplierDebt)
+
+    );
+
+
+  } catch(e){
+
+
+    alert(
+      'Lỗi lưu phiếu nhập: ' +
+      e.message
+    );
+
+
+  } finally {
+
+
+    btn.disabled = false;
+
+
+    btn.textContent =
+      '✅ Lưu phiếu & nhập kho';
+
+  }
+}
 // ---------- BÁN HÀNG (POS) ----------
 function renderPosProductList(){
   const q = (document.getElementById('posSearch').value || '').toLowerCase();
