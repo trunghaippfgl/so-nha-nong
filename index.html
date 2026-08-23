@@ -371,10 +371,13 @@
       <div class="card" id="debtList"></div>
     </div>
 
-    <div id="debtSupplierSection" style="display:none;">
+      <div id="debtSupplierSection" style="display:none;">
+      <button class="btn btn-ghost" style="margin-bottom:10px;" onclick="openAddSupplier()">+ Thêm nhà cung cấp mới</button>
+      <div class="search-box" style="margin-bottom:10px;">
+        <input id="supplierSearch" placeholder="Tìm theo tên, số điện thoại..." oninput="renderSupplierList()">
+      </div>
       <div class="section-title">Danh sách nhà cung cấp</div>
       <div class="card" id="supplierList"></div>
-      <button class="btn btn-ghost" style="margin-top:10px;" onclick="openAddSupplier()">+ Thêm nhà cung cấp mới</button>
     </div>
   </div>
   <!-- ---- TAB: BÁO CÁO ---- -->
@@ -2781,7 +2784,15 @@ function renderSupplierList(){
     box.innerHTML = '<div class="empty-state"><div class="ic">🚚</div>Chưa có nhà cung cấp nào.</div>';
     return;
   }
-  box.innerHTML = suppliers.map(s => `
+  const keyword = (document.getElementById('supplierSearch').value || '').trim().toLowerCase();
+  const filtered = suppliers.filter(s =>
+    !keyword || s.name.toLowerCase().includes(keyword) || (s.phone||'').toLowerCase().includes(keyword)
+  );
+  if (!filtered.length){
+    box.innerHTML = '<div class="empty-state"><div class="ic">🔍</div>Không tìm thấy nhà cung cấp phù hợp.</div>';
+    return;
+  }
+  box.innerHTML = filtered.map(s => `
     <div class="prod-item" style="align-items:flex-start;">
       <div class="prod-ic">🚚</div>
       <div style="flex:1;">
