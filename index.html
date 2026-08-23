@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sổ Nhà Nông V2.1.2</title>
+<title>Sổ Nhà Nông V2.1.1</title>
 <link rel="icon" type="image/png" href="icon.png">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="manifest" href="manifest.json">
@@ -282,7 +282,7 @@
 <div id="app">
   <div class="topbar">
     <div>
-      <div class="brand">🌾 Sổ Nhà Nông <span style="font-family:'Be Vietnam Pro',sans-serif;font-size:10px;color:var(--cream-500);font-weight:600;">V2.1.2</span></div>
+      <div class="brand">🌾 Sổ Nhà Nông <span style="font-family:'Be Vietnam Pro',sans-serif;font-size:10px;color:var(--cream-500);font-weight:600;">V2.1.1</span></div>
       <div class="sub" id="storeGreeting">Xin chào</div>
     </div>
     <div style="text-align:right;">
@@ -342,10 +342,10 @@
     <div class="search-box">
       <input id="stockSearch" placeholder="Tìm theo tên, mã..." oninput="renderStockList()">
     </div>
-    <div style="display:flex; gap:8px; margin-bottom:10px;">
-      <button class="btn btn-ghost" style="flex:1;" onclick="document.getElementById('excelImportInput').click()">📥 Nhập Excel</button>
-      <button class="btn btn-leaf" style="flex:1; min-width:150px;" onclick="openBulkStockIn()">📋 Phiếu nhập nhiều SP </button>
-      <button class="btn btn-ghost" style="flex:1;" onclick="openStocktake()">🧮 Kiểm kê kho</button>
+    <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
+      <button class="btn btn-ghost" style="flex:1; min-width:125px;" onclick="document.getElementById('excelImportInput').click()">📥 Nhập Excel</button>
+      <button class="btn btn-leaf" style="flex:1; min-width:150px;" onclick="openBulkStockIn()">📋 Phiếu nhập nhiều SP</button>
+      <button class="btn btn-ghost" style="flex:1; min-width:125px;" onclick="openStocktake()">🧮 Kiểm kê kho</button>
       <input type="file" id="excelImportInput" accept=".xlsx,.xls,.csv" style="display:none;" onchange="handleExcelImport(event)">
     </div>
     <div class="card" id="stockList"></div>
@@ -363,12 +363,9 @@
     </div>
 
     <div id="debtCustomerSection">
-      <button class="btn btn-ghost" style="margin-bottom:10px;" onclick="openAddCustomer()">+ Thêm khách hàng mới</button>
-      <div class="search-box" style="margin-bottom:10px;">
-        <input id="debtSearch" placeholder="Tìm theo tên, số điện thoại..." oninput="renderDebtList()">
-      </div>
       <div class="section-title">Danh sách khách nợ</div>
       <div class="card" id="debtList"></div>
+      <button class="btn btn-ghost" style="margin-top:10px;" onclick="openAddCustomer()">+ Thêm khách hàng mới</button>
     </div>
 
     <div id="debtSupplierSection" style="display:none;">
@@ -381,6 +378,7 @@
   <div class="screen" id="screen-bao-cao">
     <div class="section-title" style="margin-top:0;">Cảnh báo tồn kho</div>
     <div class="card" id="stockAlertBox" style="margin-bottom:16px; max-height:280px; overflow-y:auto;"></div>
+
     <div class="stat-row" style="margin-bottom:10px;">
       <div class="stat wheat"><div class="label">Doanh thu hôm nay</div><div class="value mono" id="statTodayRevenue">0đ</div></div>
       <div class="stat leaf"><div class="label">Đã thu hôm nay</div><div class="value mono" id="statTodayCollected">0đ</div></div>
@@ -396,16 +394,64 @@
     <div class="stat-row" style="margin-bottom:14px;">
       <div class="stat rust"><div class="label">Tổng nợ hiện tại</div><div class="value mono" id="statCurrentDebt">0đ</div></div>
     </div>
+
+    <div class="section-title">📈 Phân tích lợi nhuận tháng này</div>
+    <div class="card-tight card" id="profitCompletenessBox" style="font-size:12px; line-height:1.55; margin-bottom:10px;">Đang tính...</div>
+    <div class="stat-row" style="margin-bottom:10px;">
+      <div class="stat wheat"><div class="label">Giá vốn hàng bán</div><div class="value mono" id="statMonthCogs">0đ</div></div>
+      <div class="stat rust"><div class="label">Chi phí hoạt động</div><div class="value mono" id="statOperatingExpenses">0đ</div></div>
+    </div>
+    <div class="stat-row" style="margin-bottom:10px;">
+      <div class="stat wheat"><div class="label">Biên LN gộp</div><div class="value" id="statGrossMargin">0%</div></div>
+      <div class="stat leaf"><div class="label">LN trước thuế</div><div class="value mono" id="statPretaxProfit">0đ</div></div>
+    </div>
+    <div class="stat-row" style="margin-bottom:10px;">
+      <div class="stat rust"><div class="label">Thuế ước tính</div><div class="value mono" id="statEstimatedTax">0đ</div></div>
+      <div class="stat leaf"><div class="label">LN sau thuế</div><div class="value mono" id="statAfterTaxProfit">0đ</div></div>
+    </div>
+    <div class="stat-row" style="margin-bottom:10px;">
+      <div class="stat wheat"><div class="label">Biên LN ròng sau thuế</div><div class="value" id="statNetMargin">0%</div></div>
+      <div class="stat wheat"><div class="label">Tỷ lệ số dư đảm phí</div><div class="value" id="statContributionMargin">0%</div></div>
+    </div>
+
+    <div class="card" style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
+        <div>
+          <div class="prod-meta">🎯 Doanh thu hòa vốn</div>
+          <div class="mono" id="statBreakEvenRevenue" style="font-size:22px;font-weight:800;color:var(--wheat-400);margin-top:3px;">0đ</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="prod-meta">Biên an toàn</div>
+          <div class="mono" id="statSafetyMargin" style="font-size:16px;font-weight:700;">0đ</div>
+          <div class="prod-meta" id="statSafetyMarginPct">0%</div>
+        </div>
+      </div>
+      <div style="margin-top:12px;">
+        <div class="prod-meta">Tiến độ so với hòa vốn: <b id="statBreakEvenProgressText">0%</b></div>
+        <div style="height:10px;background:var(--soil-950);border-radius:999px;overflow:hidden;margin-top:5px;border:1px solid var(--line);">
+          <div id="statBreakEvenProgress" style="height:100%;width:0%;background:var(--leaf-500);"></div>
+        </div>
+      </div>
+      <div class="ledger-rule" style="margin:14px 0;"></div>
+      <div class="prod-meta">Mục tiêu LN sau thuế: <b class="mono" id="statProfitTarget">0đ</b></div>
+      <div style="margin-top:4px;">Doanh thu cần đạt ước tính: <b class="mono" id="statTargetRevenue" style="color:var(--wheat-400);">0đ</b></div>
+      <div class="prod-meta" id="profitInsight" style="line-height:1.55;margin-top:7px;">—</div>
+    </div>
+
+    <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
+      <button class="btn btn-ghost" style="flex:1; min-width:130px;" onclick="openExpenseManager()">💸 Thu–Chi / Chi phí</button>
+      <button class="btn btn-ghost" style="flex:1; min-width:130px;" onclick="openProfitSettings()">⚙️ Thuế & Mục tiêu</button>
+    </div>
     <div style="display:flex; gap:8px; margin-bottom:14px;">
       <button class="btn btn-ghost" style="flex:1;" onclick="openDebtReport()">🧾 Báo cáo công nợ</button>
       <button class="btn btn-ghost" style="flex:1;" onclick="openCustomerStats()">📊 Thống kê khách hàng</button>
     </div>
+
     <div class="section-title">Bán chạy nhất tháng này</div>
     <div class="card" id="topProductsList"></div>
     <div class="section-title">Lịch sử bán hàng gần đây</div>
     <div class="card" id="recentSales"></div>
   </div>
-
   <div class="navbar">
     <button class="navbtn on" id="nav-ban-hang" onclick="showTab('ban-hang')"><span class="ic">🛒</span>Bán hàng</button>
     <button class="navbtn" id="nav-kho-hang" onclick="showTab('kho-hang')"><span class="ic">📦</span>Kho hàng</button>
@@ -580,122 +626,37 @@
 <div class="overlay" id="bulkStockInModal">
   <div class="sheet" style="max-height:92vh; overflow-y:auto;">
     <button class="sheet-close" onclick="closeModal('bulkStockInModal')">✕</button>
-
     <h3>📋 Phiếu nhập nhiều sản phẩm</h3>
-
     <label>Nhà cung cấp *</label>
-    <select id="bulkStockInSupplier">
-      <option value="">-- Chọn nhà cung cấp --</option>
-    </select>
-
+    <select id="bulkStockInSupplier"><option value="">-- Chọn nhà cung cấp --</option></select>
     <div class="ledger-rule"></div>
-
     <div class="card-tight card">
-      <div style="font-weight:700; color:var(--wheat-400); margin-bottom:10px;">
-        + Thêm mặt hàng vào phiếu
-      </div>
-
+      <div style="font-weight:700; color:var(--wheat-400); margin-bottom:10px;">+ Thêm mặt hàng vào phiếu</div>
       <label>Sản phẩm *</label>
-      <select id="bulkStockInProduct"
-              onchange="onBulkStockInProductChange()">
-        <option value="">-- Chọn sản phẩm --</option>
-      </select>
-
+      <select id="bulkStockInProduct" onchange="onBulkStockInProductChange()"><option value="">-- Chọn sản phẩm --</option></select>
       <div class="row">
-        <div>
-          <label>Đơn vị nhập *</label>
-          <select id="bulkStockInUnit">
-            <option value="">-- Chọn đơn vị --</option>
-          </select>
-        </div>
-
-        <div>
-          <label>Số lượng *</label>
-          <input id="bulkStockInQty"
-                 type="number"
-                 min="0"
-                 step="0.001"
-                 inputmode="decimal"
-                 placeholder="0">
-        </div>
+        <div><label>Đơn vị nhập *</label><select id="bulkStockInUnit"><option value="">-- Chọn đơn vị --</option></select></div>
+        <div><label>Số lượng *</label><input id="bulkStockInQty" type="number" min="0" step="0.001" inputmode="decimal" placeholder="0"></div>
       </div>
-
-      <label>Giá nhập / đơn vị đang chọn *</label>
-      <input id="bulkStockInCost"
-             type="number"
-             min="0"
-             inputmode="decimal"
-             placeholder="0">
-
+      <label>Giá nhập / đơn vị đang chọn *</label><input id="bulkStockInCost" type="number" min="0" inputmode="decimal" placeholder="0">
       <div class="row">
-        <div>
-          <label>Số lô</label>
-          <input id="bulkStockInLot"
-                 placeholder="VD: AT2608">
-        </div>
-
-        <div>
-          <label>Hạn sử dụng</label>
-          <input id="bulkStockInExpiry"
-                 type="date">
-        </div>
+        <div><label>Số lô</label><input id="bulkStockInLot" placeholder="VD: AT2608"></div>
+        <div><label>Hạn sử dụng</label><input id="bulkStockInExpiry" type="date"></div>
       </div>
-
-      <button class="btn btn-primary"
-              style="margin-top:12px;"
-              onclick="addBulkStockInItem()">
-        + Thêm vào phiếu
-      </button>
+      <button class="btn btn-primary" style="margin-top:12px;" onclick="addBulkStockInItem()">+ Thêm vào phiếu</button>
     </div>
-
     <div class="section-title">Các mặt hàng trong phiếu</div>
-
-    <div class="card" id="bulkStockInItems">
-      <div class="empty-state" style="padding:18px;">
-        Chưa có sản phẩm trong phiếu nhập.
-      </div>
+    <div class="card" id="bulkStockInItems"><div class="empty-state" style="padding:18px;">Chưa có sản phẩm trong phiếu nhập.</div></div>
+    <label>Đã thanh toán cho NCC</label><input id="bulkStockInPaid" type="number" min="0" inputmode="decimal" placeholder="0" oninput="updateBulkStockInSummary()">
+    <label>Ghi chú phiếu nhập</label><textarea id="bulkStockInNote" rows="2" placeholder="VD: Hóa đơn số 125, giao hàng đợt tháng 8..."></textarea>
+    <div class="card-tight card" style="margin-top:12px; line-height:1.8;">
+      <div>Tổng tiền hàng: <b class="mono" id="bulkStockInTotal" style="float:right;">0đ</b></div>
+      <div>Còn nợ NCC: <b class="mono" id="bulkStockInDebt" style="float:right; color:var(--rust-500);">0đ</b></div>
     </div>
-
-    <label>Đã thanh toán cho NCC</label>
-    <input id="bulkStockInPaid"
-           type="number"
-           min="0"
-           inputmode="decimal"
-           placeholder="0"
-           oninput="updateBulkStockInSummary()">
-
-    <label>Ghi chú phiếu nhập</label>
-    <textarea id="bulkStockInNote"
-              rows="2"
-              placeholder="VD: Hóa đơn số 125, giao hàng đợt tháng 8..."></textarea>
-
-    <div class="card-tight card"
-         style="margin-top:12px; line-height:1.8;">
-
-      <div>
-        Tổng tiền hàng:
-        <b class="mono"
-           id="bulkStockInTotal"
-           style="float:right;">0đ</b>
-      </div>
-
-      <div>
-        Còn nợ NCC:
-        <b class="mono"
-           id="bulkStockInDebt"
-           style="float:right; color:var(--rust-500);">0đ</b>
-      </div>
-    </div>
-
-    <button class="btn btn-leaf"
-            id="bulkStockInConfirmBtn"
-            style="margin-top:12px;"
-            onclick="confirmBulkStockIn()">
-      ✅ Lưu phiếu & nhập kho
-    </button>
-
+    <button class="btn btn-leaf" id="bulkStockInConfirmBtn" style="margin-top:12px;" onclick="confirmBulkStockIn()">✅ Lưu phiếu & nhập kho</button>
   </div>
 </div>
+
 <!-- ============ MODAL: CHI TIẾT LÔ ============ -->
 <div class="overlay" id="lotListModal">
   <div class="sheet" style="max-height:88vh; overflow-y:auto;">
@@ -937,7 +898,7 @@
 
     <div class="ledger-rule" style="margin:20px 0;"></div>
 
-    <h3>Dữ liệu V2.1.2</h3>
+    <h3>Dữ liệu V2.2</h3>
     <div class="card-tight card" id="migrationSettingsStatus" style="font-size:13px; line-height:1.6;">Đang kiểm tra trạng thái...</div>
     <button class="btn btn-ghost" id="migrationCompareBtn" onclick="showMigrationComparisonV21()" style="margin-top:8px;">🧾 Xem đối chiếu nâng cấp</button>
     <button class="btn btn-ghost" onclick="openDataHealthCheck()" style="margin-top:8px;">🩺 Kiểm tra sức khỏe dữ liệu</button>
@@ -954,6 +915,52 @@
     <div style="margin-top:16px;">
       <button class="btn btn-primary" onclick="changePassword()">Cập nhật mật khẩu</button>
     </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: THU–CHI / CHI PHÍ ============ -->
+<div class="overlay" id="expenseModal">
+  <div class="sheet" style="max-height:92vh; overflow-y:auto;">
+    <button class="sheet-close" onclick="closeModal('expenseModal')">✕</button>
+    <h3>💸 Thu–Chi / Chi phí</h3>
+    <div class="card-tight card" style="font-size:12px;line-height:1.55;">Chỉ các khoản <b>chi phí hoạt động</b> mới được đưa vào phân tích lợi nhuận. Giá vốn hàng hóa đã được lấy từ hóa đơn bán hàng, không nhập lại tại đây.</div>
+    <div class="row">
+      <div><label>Ngày chi *</label><input id="expenseDate" type="date"></div>
+      <div><label>Loại chi phí *</label><select id="expenseType"><option value="fixed">Cố định</option><option value="variable">Biến đổi</option></select></div>
+    </div>
+    <label>Nhóm chi phí *</label>
+    <select id="expenseCategory">
+      <option>Tiền thuê cửa hàng</option><option>Lương nhân viên</option><option>Điện / nước / internet</option><option>Vận chuyển / giao hàng</option><option>Bao bì</option><option>Hoa hồng</option><option>Phí thanh toán</option><option>Khấu hao</option><option>Chi phí khác</option>
+    </select>
+    <label>Số tiền *</label><input id="expenseAmount" type="number" min="0" inputmode="numeric" placeholder="0">
+    <label>Nội dung / ghi chú</label><textarea id="expenseNote" rows="2" placeholder="VD: Tiền thuê cửa hàng tháng 8..."></textarea>
+    <button class="btn btn-primary" id="expenseSaveBtn" onclick="saveExpense()" style="margin-top:12px;">+ Ghi nhận chi phí</button>
+    <div class="ledger-rule" style="margin:18px 0;"></div>
+    <div class="stat-row" style="margin-bottom:10px;">
+      <div class="stat wheat"><div class="label">Chi phí cố định tháng</div><div class="value mono" id="expenseFixedTotal">0đ</div></div>
+      <div class="stat rust"><div class="label">Chi phí biến đổi tháng</div><div class="value mono" id="expenseVariableTotal">0đ</div></div>
+    </div>
+    <div class="section-title" style="margin-top:0;">Chi phí tháng này</div>
+    <div class="card" id="expenseList"><div class="empty-state">Chưa có chi phí.</div></div>
+  </div>
+</div>
+
+<!-- ============ MODAL: THUẾ & MỤC TIÊU LỢI NHUẬN ============ -->
+<div class="overlay" id="profitSettingsModal">
+  <div class="sheet" style="max-height:92vh; overflow-y:auto;">
+    <button class="sheet-close" onclick="closeModal('profitSettingsModal')">✕</button>
+    <h3>⚙️ Thuế & Mục tiêu lợi nhuận</h3>
+    <div class="card-tight card" style="font-size:12px;line-height:1.55;">Thuế trong Sổ Nhà Nông là <b>ước tính quản trị</b>, không thay thế số kê khai chính thức. Bạn chọn cách tính phù hợp với hồ sơ thực tế của cửa hàng.</div>
+    <label>Ngày bắt đầu theo dõi lợi nhuận đầy đủ</label><input id="profitTrackingStart" type="date">
+    <label>Cách ước tính thuế</label>
+    <select id="profitTaxMode" onchange="toggleProfitTaxFields()"><option value="revenue">Theo % doanh thu thuần</option><option value="profit">Theo % lợi nhuận trước thuế</option><option value="manual">Nhập số thuế dự kiến / tháng</option></select>
+    <div id="profitTaxRevenueFields">
+      <div class="row"><div><label>Thuế 1 (% doanh thu)</label><input id="profitTaxRate1" type="number" min="0" step="0.01" placeholder="0"></div><div><label>Thuế 2 (% doanh thu)</label><input id="profitTaxRate2" type="number" min="0" step="0.01" placeholder="0"></div></div>
+    </div>
+    <div id="profitTaxProfitFields" style="display:none;"><label>Thuế suất trên LN trước thuế (%)</label><input id="profitTaxProfitRate" type="number" min="0" step="0.01" placeholder="0"></div>
+    <div id="profitTaxManualFields" style="display:none;"><label>Thuế dự kiến / tháng</label><input id="profitTaxManual" type="number" min="0" inputmode="numeric" placeholder="0"></div>
+    <label>Lợi nhuận sau thuế mục tiêu / tháng</label><input id="profitTargetInput" type="number" min="0" inputmode="numeric" placeholder="VD: 30000000">
+    <button class="btn btn-primary" id="profitSettingsSaveBtn" onclick="saveProfitSettings()" style="margin-top:14px;">Lưu cài đặt</button>
   </div>
 </div>
 
@@ -1064,6 +1071,8 @@ let stocktakeDraft = {};
 let stocktakeBaseline = {};
 let stocktakeHistory = [];
 let bulkStockInItems = [];
+let expenses = [];
+let profitSettings = {taxMode:'manual',taxRate1:0,taxRate2:0,taxProfitRate:0,taxManual:0,targetProfit:0,trackingStartDate:''};
 let storeListenersStarted = false;
 let authInitToken = 0;
 function numberToVietnameseWords(number){
@@ -1256,6 +1265,8 @@ function startStoreListenersV21(){
   listenSuppliers();
   listenInventoryLots();
   listenReportData();
+  listenExpensesV22();
+  listenProfitSettingsV22();
 }
 function hideAllGateScreensV21(){
   document.getElementById('migrationScreen').style.display='none';
@@ -1539,7 +1550,7 @@ function updateMigrationSettingsStatusV21(){
   if(!box) return;
   const d=migrationStoreDataV21||{};
   if(d.migrationV21Complete===true || ['2.1','2.1.1'].includes(String(d.schemaVersion||''))){
-    box.innerHTML='✅ <b>Dữ liệu V2.1 đã sẵn sàng.</b><br><span class="prod-meta">Tồn đầu kỳ và dư nợ đầu kỳ đã được chuẩn hóa mà không thay đổi số dư hiện tại.</span>';
+    box.innerHTML='✅ <b>Dữ liệu nền V2.1.1 đã sẵn sàng cho V2.2.</b><br><span class="prod-meta">Tồn đầu kỳ và dư nợ đầu kỳ đã được chuẩn hóa mà không thay đổi số dư hiện tại.</span>';
   }else box.innerHTML='⚠️ Cửa hàng chưa hoàn tất nâng cấp dữ liệu V2.1.';
 }
 async function showMigrationComparisonV21(){
@@ -1608,6 +1619,25 @@ function listenReportData(){
     renderReports();
   });
 }
+function monthKeyV22(date=new Date()){
+  return date.getFullYear() + '-' + String(date.getMonth()+1).padStart(2,'0');
+}
+function listenExpensesV22(){
+  const key=monthKeyV22();
+  storeRef.collection('expenses').where('monthKey','==',key).onSnapshot(snap=>{
+    expenses=snap.docs.map(d=>({id:d.id,...d.data()}));
+    expenses.sort((a,b)=>String(b.expenseDate||'').localeCompare(String(a.expenseDate||'')));
+    renderExpenseListV22();
+    renderReports();
+  },e=>console.warn('Không tải được chi phí V2.2:',e));
+}
+function listenProfitSettingsV22(){
+  storeRef.collection('appSettings').doc('profitV22').onSnapshot(doc=>{
+    if(doc.exists) profitSettings={...profitSettings,...doc.data()};
+    renderReports();
+  },e=>console.warn('Không tải được cấu hình lợi nhuận V2.2:',e));
+}
+
 function productAltUnits(p){
   return Array.isArray(p.altUnits) ? p.altUnits.filter(u => u && u.name && Number(u.factor) > 0) : [];
 }
@@ -2137,998 +2167,74 @@ function confirmStockIn(){
     alert('Đã nhập ' + qty + ' ' + u.name + '. Giá vốn bình quân mới: ' + money(avgCost) + '/' + p.unit);
   }).catch(e => alert('Lỗi nhập kho: ' + e.message)).finally(() => { btn.disabled=false; btn.textContent='Lưu phiếu & nhập kho'; });
 }
-// ============================================================
-// PHIẾU NHẬP NHIỀU SẢN PHẨM
-// ============================================================
 
+// ---------- PHIẾU NHẬP NHIỀU SẢN PHẨM ----------
 function fillBulkStockInSuppliers(){
-  const sel = document.getElementById('bulkStockInSupplier');
-  if (!sel) return;
-
-  sel.innerHTML =
-    '<option value="">-- Chọn nhà cung cấp --</option>' +
-    suppliers.map(s =>
-      `<option value="${s.id}">${escapeHtmlV211(s.name)}</option>`
-    ).join('');
+  const sel=document.getElementById('bulkStockInSupplier'); if(!sel)return;
+  sel.innerHTML='<option value="">-- Chọn nhà cung cấp --</option>'+suppliers.map(x=>`<option value="${x.id}">${escapeHtmlV211(x.name)}</option>`).join('');
 }
-
-
 function fillBulkStockInProducts(){
-  const sel = document.getElementById('bulkStockInProduct');
-  if (!sel) return;
-
-  const sorted = products.slice().sort(
-    (a,b) => (a.name || '').localeCompare(b.name || '', 'vi')
-  );
-
-  sel.innerHTML =
-    '<option value="">-- Chọn sản phẩm --</option>' +
-    sorted.map(p =>
-      `<option value="${p.id}">${escapeHtmlV211(p.name)}</option>`
-    ).join('');
+  const sel=document.getElementById('bulkStockInProduct'); if(!sel)return;
+  sel.innerHTML='<option value="">-- Chọn sản phẩm --</option>'+products.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'','vi')).map(p=>`<option value="${p.id}">${escapeHtmlV211(p.name)}</option>`).join('');
 }
-
-
 function openBulkStockIn(){
-
-  bulkStockInItems = [];
-
-  fillBulkStockInSuppliers();
-  fillBulkStockInProducts();
-
-  document.getElementById('bulkStockInSupplier').value = '';
-  document.getElementById('bulkStockInProduct').value = '';
-
-  document.getElementById('bulkStockInUnit').innerHTML =
-    '<option value="">-- Chọn đơn vị --</option>';
-
-  document.getElementById('bulkStockInQty').value = '';
-  document.getElementById('bulkStockInCost').value = '';
-  document.getElementById('bulkStockInLot').value = '';
-  document.getElementById('bulkStockInExpiry').value = '';
-
-  document.getElementById('bulkStockInPaid').value = '';
-  document.getElementById('bulkStockInNote').value = '';
-
-  renderBulkStockInItems();
-
-  openModal('bulkStockInModal');
+  bulkStockInItems=[]; fillBulkStockInSuppliers(); fillBulkStockInProducts();
+  document.getElementById('bulkStockInSupplier').value=''; document.getElementById('bulkStockInProduct').value='';
+  document.getElementById('bulkStockInUnit').innerHTML='<option value="">-- Chọn đơn vị --</option>';
+  ['bulkStockInQty','bulkStockInCost','bulkStockInLot','bulkStockInExpiry','bulkStockInPaid','bulkStockInNote'].forEach(id=>document.getElementById(id).value='');
+  renderBulkStockInItems(); openModal('bulkStockInModal');
 }
-
-
 function onBulkStockInProductChange(){
-
-  const productId =
-    document.getElementById('bulkStockInProduct').value;
-
-  const p = products.find(x => x.id === productId);
-
-  const sel =
-    document.getElementById('bulkStockInUnit');
-
-  if (!p){
-
-    sel.innerHTML =
-      '<option value="">-- Chọn đơn vị --</option>';
-
-    return;
-  }
-
-  sel.innerHTML = allProductUnits(p).map(u =>
-
-    `<option value="${encodeURIComponent(u.name)}">
-
-      ${escapeHtmlV211(u.name)}
-
-      ${u.factor !== 1
-        ? ' (1 = ' +
-          u.factor +
-          ' ' +
-          escapeHtmlV211(p.unit) +
-          ')'
-        : ''}
-
-    </option>`
-
-  ).join('');
+  const p=products.find(x=>x.id===document.getElementById('bulkStockInProduct').value),sel=document.getElementById('bulkStockInUnit');
+  if(!p){sel.innerHTML='<option value="">-- Chọn đơn vị --</option>';return;}
+  sel.innerHTML=allProductUnits(p).map(u=>`<option value="${encodeURIComponent(u.name)}">${escapeHtmlV211(u.name)}${u.factor!==1?' (1 = '+u.factor+' '+escapeHtmlV211(p.unit)+')':''}</option>`).join('');
 }
-
-
 function getBulkStockInSelectedUnit(p){
-
-  const encoded =
-    document.getElementById('bulkStockInUnit').value;
-
-  const name =
-    encoded ? decodeURIComponent(encoded) : '';
-
-  return allProductUnits(p).find(
-    u => u.name === name
-  ) || {
-    name:p.unit,
-    factor:1
-  };
+  const raw=document.getElementById('bulkStockInUnit').value,name=raw?decodeURIComponent(raw):'';
+  return allProductUnits(p).find(u=>u.name===name)||{name:p.unit,factor:1};
 }
-
-
 function addBulkStockInItem(){
-
-  if (bulkStockInItems.length >= 100){
-
-    alert('Một phiếu tối đa 100 dòng hàng.');
-
-    return;
-  }
-
-  const productId =
-    document.getElementById('bulkStockInProduct').value;
-
-  const p =
-    products.find(x => x.id === productId);
-
-  if (!p){
-
-    alert('Vui lòng chọn sản phẩm.');
-
-    return;
-  }
-
-  const u =
-    getBulkStockInSelectedUnit(p);
-
-  const qty =
-    parseFloat(
-      document.getElementById('bulkStockInQty').value
-    ) || 0;
-
-  const costPerSelected =
-    parseFloat(
-      document.getElementById('bulkStockInCost').value
-    ) || 0;
-
-  const lotNumber =
-    document.getElementById('bulkStockInLot')
-      .value.trim();
-
-  const expiry =
-    document.getElementById('bulkStockInExpiry')
-      .value || null;
-
-
-  if (qty <= 0){
-
-    alert('Số lượng nhập phải lớn hơn 0.');
-
-    return;
-  }
-
-
-  if (costPerSelected <= 0){
-
-    alert('Giá nhập phải lớn hơn 0.');
-
-    return;
-  }
-
-
-  const factor =
-    Number(u.factor) || 1;
-
-  const baseQty =
-    qty * factor;
-
-  const unitCostBase =
-    costPerSelected / factor;
-
-  const lineTotal =
-    qty * costPerSelected;
-
-
-  bulkStockInItems.push({
-
-    tempId:
-      Date.now() +
-      '_' +
-      Math.random()
-        .toString(36)
-        .slice(2,8),
-
-    productId:p.id,
-
-    productName:p.name,
-
-    qty,
-
-    unit:u.name,
-
-    factor,
-
-    baseQty,
-
-    cost:costPerSelected,
-
-    unitCostBase,
-
-    lotNumber,
-
-    expiry,
-
-    lineTotal,
-
-    baseUnit:p.unit
-  });
-
-
-  // Xóa dữ liệu dòng vừa nhập,
-  // giữ nguyên sản phẩm để nhập dòng tiếp nhanh hơn
-
-  document.getElementById('bulkStockInQty').value = '';
-
-  document.getElementById('bulkStockInCost').value = '';
-
-  document.getElementById('bulkStockInLot').value = '';
-
-  document.getElementById('bulkStockInExpiry').value = '';
-
-
-  renderBulkStockInItems();
+  if(bulkStockInItems.length>=100){alert('Một phiếu tối đa 100 dòng hàng.');return;}
+  const p=products.find(x=>x.id===document.getElementById('bulkStockInProduct').value); if(!p){alert('Vui lòng chọn sản phẩm.');return;}
+  const u=getBulkStockInSelectedUnit(p),qty=parseFloat(document.getElementById('bulkStockInQty').value)||0,cost=parseFloat(document.getElementById('bulkStockInCost').value)||0;
+  if(qty<=0){alert('Số lượng nhập phải lớn hơn 0.');return;} if(cost<=0){alert('Giá nhập phải lớn hơn 0.');return;}
+  const factor=Number(u.factor)||1,baseQty=qty*factor,unitCostBase=cost/factor;
+  bulkStockInItems.push({tempId:Date.now()+'_'+Math.random().toString(36).slice(2,8),productId:p.id,productName:p.name,qty,unit:u.name,factor,baseQty,cost,unitCostBase,lotNumber:document.getElementById('bulkStockInLot').value.trim(),expiry:document.getElementById('bulkStockInExpiry').value||null,lineTotal:qty*cost,baseUnit:p.unit});
+  ['bulkStockInQty','bulkStockInCost','bulkStockInLot','bulkStockInExpiry'].forEach(id=>document.getElementById(id).value=''); renderBulkStockInItems();
 }
-
-
-function removeBulkStockInItem(tempId){
-
-  bulkStockInItems =
-    bulkStockInItems.filter(
-      x => x.tempId !== tempId
-    );
-
-  renderBulkStockInItems();
-}
-
-
-function getBulkStockInTotal(){
-
-  return bulkStockInItems.reduce(
-    (sum,x) =>
-      sum + Number(x.lineTotal || 0),
-    0
-  );
-}
-
-
+function removeBulkStockInItem(id){bulkStockInItems=bulkStockInItems.filter(x=>x.tempId!==id);renderBulkStockInItems();}
+function getBulkStockInTotal(){return bulkStockInItems.reduce((s,x)=>s+Number(x.lineTotal||0),0);}
 function updateBulkStockInSummary(){
-
-  const total =
-    getBulkStockInTotal();
-
-  const paidRaw =
-    document.getElementById('bulkStockInPaid')
-      .value.trim();
-
-  const paid =
-    paidRaw === ''
-      ? 0
-      : (parseFloat(paidRaw) || 0);
-
-  document.getElementById(
-    'bulkStockInTotal'
-  ).textContent =
-    money(total);
-
-  document.getElementById(
-    'bulkStockInDebt'
-  ).textContent =
-    money(
-      Math.max(0, total - paid)
-    );
+  const total=getBulkStockInTotal(),raw=document.getElementById('bulkStockInPaid').value.trim(),paid=raw===''?0:(parseFloat(raw)||0);
+  document.getElementById('bulkStockInTotal').textContent=money(total); document.getElementById('bulkStockInDebt').textContent=money(Math.max(0,total-paid));
 }
-
-
 function renderBulkStockInItems(){
-
-  const box =
-    document.getElementById('bulkStockInItems');
-
-  if (!box) return;
-
-
-  if (!bulkStockInItems.length){
-
-    box.innerHTML =
-      '<div class="empty-state" style="padding:18px;">' +
-      'Chưa có sản phẩm trong phiếu nhập.' +
-      '</div>';
-
-  } else {
-
-    box.innerHTML =
-      bulkStockInItems.map((x,i) => `
-
-        <div class="prod-item"
-             style="align-items:flex-start;">
-
-          <div style="
-              width:26px;
-              color:var(--wheat-400);
-              font-weight:700;">
-            ${i + 1}
-          </div>
-
-          <div style="flex:1; min-width:0;">
-
-            <div class="prod-name">
-              ${escapeHtmlV211(x.productName)}
-            </div>
-
-            <div class="prod-meta">
-
-              ${x.qty.toLocaleString('vi-VN')}
-              ${escapeHtmlV211(x.unit)}
-
-              × ${money(x.cost)}
-
-              = <b>${money(x.lineTotal)}</b>
-
-            </div>
-
-            <div class="prod-meta">
-
-              Vào kho:
-              ${x.baseQty.toLocaleString('vi-VN')}
-              ${escapeHtmlV211(x.baseUnit)}
-
-              · Giá vốn nhập:
-              ${money(x.unitCostBase)}
-              /
-              ${escapeHtmlV211(x.baseUnit)}
-
-            </div>
-
-            <div class="prod-meta">
-
-              Lô:
-              ${escapeHtmlV211(
-                x.lotNumber || '—'
-              )}
-
-              · HSD:
-              ${escapeHtmlV211(
-                x.expiry || '—'
-              )}
-
-            </div>
-
-          </div>
-
-          <button
-              class="btn btn-sm btn-danger"
-              style="width:auto;"
-              onclick="
-                removeBulkStockInItem(
-                  '${x.tempId}'
-                )
-              ">
-            Xóa
-          </button>
-
-        </div>
-
-      `).join('');
-  }
-
-
+  const box=document.getElementById('bulkStockInItems'); if(!box)return;
+  box.innerHTML=bulkStockInItems.length?bulkStockInItems.map((x,i)=>`<div class="prod-item" style="align-items:flex-start;"><div style="width:24px;color:var(--wheat-400);font-weight:700;">${i+1}</div><div style="flex:1;min-width:0;"><div class="prod-name">${escapeHtmlV211(x.productName)}</div><div class="prod-meta">${x.qty.toLocaleString('vi-VN')} ${escapeHtmlV211(x.unit)} × ${money(x.cost)} = <b>${money(x.lineTotal)}</b></div><div class="prod-meta">Vào kho: ${x.baseQty.toLocaleString('vi-VN')} ${escapeHtmlV211(x.baseUnit)} · Giá vốn nhập ${money(x.unitCostBase)}/${escapeHtmlV211(x.baseUnit)}</div><div class="prod-meta">Lô ${escapeHtmlV211(x.lotNumber||'—')} · HSD ${escapeHtmlV211(x.expiry||'—')}</div></div><button class="btn btn-sm btn-danger" style="width:auto;" onclick="removeBulkStockInItem('${x.tempId}')">Xóa</button></div>`).join(''):'<div class="empty-state" style="padding:18px;">Chưa có sản phẩm trong phiếu nhập.</div>';
   updateBulkStockInSummary();
 }
-
-
-
-// ============================================================
-// XÁC NHẬN PHIẾU NHẬP
-// ============================================================
-
 async function confirmBulkStockIn(){
-
-  const btn =
-    document.getElementById(
-      'bulkStockInConfirmBtn'
-    );
-
-  if (btn.disabled) return;
-
-
-  const supplierId =
-    document.getElementById(
-      'bulkStockInSupplier'
-    ).value;
-
-
-  const supplier =
-    suppliers.find(
-      s => s.id === supplierId
-    );
-
-
-  if (!supplierId || !supplier){
-
-    alert(
-      'Vui lòng chọn nhà cung cấp.'
-    );
-
-    return;
-  }
-
-
-  if (!bulkStockInItems.length){
-
-    alert(
-      'Phiếu nhập chưa có sản phẩm.'
-    );
-
-    return;
-  }
-
-
-  // Chụp lại dữ liệu phiếu trước khi lưu
-
-  const itemsSnapshot =
-    bulkStockInItems.map(
-      x => ({...x})
-    );
-
-
-  const total =
-    itemsSnapshot.reduce(
-      (sum,x) =>
-        sum + Number(x.lineTotal || 0),
-      0
-    );
-
-
-  const paidRaw =
-    document.getElementById(
-      'bulkStockInPaid'
-    ).value.trim();
-
-
-  const paid =
-    paidRaw === ''
-      ? 0
-      : (parseFloat(paidRaw) || 0);
-
-
-  if (paid < 0 || paid > total){
-
-    alert(
-      'Số tiền đã trả phải từ 0 đến tổng tiền nhập.'
-    );
-
-    return;
-  }
-
-
-  const supplierDebt =
-    total - paid;
-
-
-  const note =
-    document.getElementById(
-      'bulkStockInNote'
-    ).value.trim();
-
-
-  const receiptNo =
-    'PN-' + Date.now();
-
-
-  const receiptRef =
-    storeRef.collection(
-      'purchaseReceipts'
-    ).doc();
-
-
-
-  // ------------------------------------------------
-  // Gom các dòng cùng sản phẩm
-  // để tính giá vốn bình quân chính xác một lần
-  // ------------------------------------------------
-
-  const grouped = {};
-
-
-  itemsSnapshot.forEach(x => {
-
-    if (!grouped[x.productId]){
-
-      grouped[x.productId] = {
-        baseQty:0,
-        value:0
-      };
-    }
-
-    grouped[x.productId].baseQty +=
-      Number(x.baseQty) || 0;
-
-    grouped[x.productId].value +=
-      Number(x.baseQty || 0) *
-      Number(x.unitCostBase || 0);
-
-  });
-
-
-  const productIds =
-    Object.keys(grouped);
-
-
-  const productRefs =
-    productIds.map(
-      id =>
-        storeRef
-          .collection('products')
-          .doc(id)
-    );
-
-
-  const suppRef =
-    storeRef
-      .collection('suppliers')
-      .doc(supplierId);
-
-
-
-  btn.disabled = true;
-
-  btn.textContent =
-    'Đang lưu phiếu...';
-
-
-
-  try {
-
-
-    // Dùng Transaction để tránh tồn kho
-    // bị ghi đè nếu đang có giao dịch khác.
-
-    await db.runTransaction(
-      async tx => {
-
-
-        // Đọc tất cả sản phẩm trước
-
-        const productDocs =
-          await Promise.all(
-            productRefs.map(
-              ref => tx.get(ref)
-            )
-          );
-
-
-        // Đọc NCC trước khi bắt đầu ghi
-
-        const suppDoc =
-          await tx.get(suppRef);
-
-
-        if (!suppDoc.exists){
-
-          throw new Error(
-            'Nhà cung cấp không còn tồn tại.'
-          );
-        }
-
-
-        for (
-          let i = 0;
-          i < productDocs.length;
-          i++
-        ){
-
-          if (!productDocs[i].exists){
-
-            throw new Error(
-              'Có sản phẩm trong phiếu không còn tồn tại.'
-            );
-          }
-        }
-
-
-
-        // ------------------------------------------
-        // Lưu phiếu nhập chính
-        // ------------------------------------------
-
-        const receiptItems =
-          itemsSnapshot.map(x => ({
-
-            productId:x.productId,
-
-            productName:x.productName,
-
-            qty:x.qty,
-
-            unit:x.unit,
-
-            factor:x.factor,
-
-            baseQty:x.baseQty,
-
-            cost:x.cost,
-
-            unitCostBase:
-              x.unitCostBase,
-
-            lotNumber:
-              x.lotNumber || '',
-
-            expiry:
-              x.expiry || null,
-
-            lineTotal:
-              x.lineTotal,
-
-            baseUnit:
-              x.baseUnit
-
-          }));
-
-
-        tx.set(
-          receiptRef,
-          {
-
-            receiptNo,
-
-            supplierId,
-
-            supplierName:
-              supplier.name,
-
-            items:
-              receiptItems,
-
-            total,
-
-            paidAmount:
-              paid,
-
-            debtAmount:
-              supplierDebt,
-
-            note,
-
-            itemCount:
-              receiptItems.length,
-
-            createdAt:
-              firebase.firestore
-                .FieldValue
-                .serverTimestamp()
-
-          }
-        );
-
-
-
-        // ------------------------------------------
-        // Cập nhật tồn + giá vốn từng sản phẩm
-        // ------------------------------------------
-
-        productDocs.forEach(
-          (doc,i) => {
-
-
-            const id =
-              productIds[i];
-
-
-            const data =
-              doc.data() || {};
-
-
-            const g =
-              grouped[id];
-
-
-            const oldStock =
-              Number(data.stock) || 0;
-
-
-            const oldCost =
-              Number(
-                data.avgCost ??
-                data.cost ??
-                0
-              ) || 0;
-
-
-            const newStock =
-              oldStock +
-              g.baseQty;
-
-
-            const avgCost =
-              newStock > 0
-
-                ? (
-                    (
-                      oldStock *
-                      oldCost
-                    ) +
-                    g.value
-                  ) /
-                  newStock
-
-                : 0;
-
-
-            tx.update(
-              productRefs[i],
-              {
-
-                stock:
-                  newStock,
-
-                cost:
-                  avgCost,
-
-                avgCost:
-                  avgCost,
-
-                updatedAt:
-                  firebase.firestore
-                    .FieldValue
-                    .serverTimestamp()
-
-              }
-            );
-
-          }
-        );
-
-
-
-        // ------------------------------------------
-        // Tạo lô + nhật ký kho cho từng dòng
-        // ------------------------------------------
-
-        itemsSnapshot.forEach(x => {
-
-
-          const lotRef =
-            storeRef
-              .collection(
-                'inventoryLots'
-              )
-              .doc();
-
-
-          const logRef =
-            storeRef
-              .collection(
-                'stockLogs'
-              )
-              .doc();
-
-
-
-          tx.set(
-            lotRef,
-            {
-
-              productId:
-                x.productId,
-
-              productName:
-                x.productName,
-
-              lotNumber:
-                x.lotNumber || '',
-
-              expiry:
-                x.expiry || null,
-
-              qtyInitial:
-                x.baseQty,
-
-              qtyRemaining:
-                x.baseQty,
-
-              baseUnit:
-                x.baseUnit,
-
-              unitCost:
-                x.unitCostBase,
-
-              supplierId,
-
-              supplierName:
-                supplier.name,
-
-              purchaseReceiptId:
-                receiptRef.id,
-
-              createdAt:
-                firebase.firestore
-                  .FieldValue
-                  .serverTimestamp()
-
-            }
-          );
-
-
-          tx.set(
-            logRef,
-            {
-
-              type:
-                'purchase',
-
-              productId:
-                x.productId,
-
-              productName:
-                x.productName,
-
-              qty:
-                x.baseQty,
-
-              unit:
-                x.baseUnit,
-
-              cost:
-                x.unitCostBase,
-
-              lotNumber:
-                x.lotNumber || '',
-
-              expiry:
-                x.expiry || null,
-
-              referenceId:
-                receiptRef.id,
-
-              createdAt:
-                firebase.firestore
-                  .FieldValue
-                  .serverTimestamp()
-
-            }
-          );
-
-        });
-
-
-
-        // ------------------------------------------
-        // Công nợ NCC
-        // ------------------------------------------
-
-        if (supplierDebt > 0){
-
-
-          const oldDebt =
-            Number(
-              suppDoc.data().debt || 0
-            );
-
-
-          const suppUpdate = {
-
-            debt:
-              oldDebt +
-              supplierDebt
-
-          };
-
-
-          if (oldDebt <= 0){
-
-            suppUpdate.debtSince =
-              firebase.firestore
-                .FieldValue
-                .serverTimestamp();
-
-          }
-
-
-          tx.update(
-            suppRef,
-            suppUpdate
-          );
-
-
-          tx.set(
-            storeRef
-              .collection(
-                'supplierDebtLedger'
-              )
-              .doc(),
-
-            {
-
-              supplierId,
-
-              supplierName:
-                supplier.name,
-
-              type:
-                'purchase',
-
-              debit:
-                supplierDebt,
-
-              credit:
-                0,
-
-              description:
-                'Phiếu nhập ' +
-                receiptNo +
-                ' · ' +
-                itemsSnapshot.length +
-                ' dòng hàng',
-
-              referenceId:
-                receiptRef.id,
-
-              createdAt:
-                firebase.firestore
-                  .FieldValue
-                  .serverTimestamp()
-
-            }
-          );
-
-        }
-
-      }
-    );
-
-
-
-    bulkStockInItems = [];
-
-
-    closeModal(
-      'bulkStockInModal'
-    );
-
-
-    alert(
-
-      'Đã lưu ' +
-      receiptNo +
-
-      '\nTổng tiền: ' +
-      money(total) +
-
-      '\nĐã trả: ' +
-      money(paid) +
-
-      '\nCòn nợ NCC: ' +
-      money(supplierDebt)
-
-    );
-
-
-  } catch(e){
-
-
-    alert(
-      'Lỗi lưu phiếu nhập: ' +
-      e.message
-    );
-
-
-  } finally {
-
-
-    btn.disabled = false;
-
-
-    btn.textContent =
-      '✅ Lưu phiếu & nhập kho';
-
-  }
+  const btn=document.getElementById('bulkStockInConfirmBtn'); if(btn.disabled)return;
+  const supplierId=document.getElementById('bulkStockInSupplier').value,supplier=suppliers.find(x=>x.id===supplierId);
+  if(!supplier){alert('Vui lòng chọn nhà cung cấp.');return;} if(!bulkStockInItems.length){alert('Phiếu nhập chưa có sản phẩm.');return;}
+  const items=bulkStockInItems.map(x=>({...x})),total=items.reduce((s,x)=>s+Number(x.lineTotal||0),0),raw=document.getElementById('bulkStockInPaid').value.trim(),paid=raw===''?0:(parseFloat(raw)||0);
+  if(paid<0||paid>total){alert('Số tiền đã trả phải từ 0 đến tổng tiền nhập.');return;}
+  const debt=total-paid,note=document.getElementById('bulkStockInNote').value.trim(),receiptNo='PN-'+Date.now(),receiptRef=storeRef.collection('purchaseReceipts').doc(),grouped={};
+  items.forEach(x=>{if(!grouped[x.productId])grouped[x.productId]={baseQty:0,value:0};grouped[x.productId].baseQty+=Number(x.baseQty)||0;grouped[x.productId].value+=(Number(x.baseQty)||0)*(Number(x.unitCostBase)||0);});
+  const ids=Object.keys(grouped),refs=ids.map(id=>storeRef.collection('products').doc(id)),suppRef=storeRef.collection('suppliers').doc(supplierId);
+  btn.disabled=true;btn.textContent='Đang lưu phiếu...';
+  try{
+    await db.runTransaction(async tx=>{
+      const docs=await Promise.all(refs.map(r=>tx.get(r))),suppDoc=await tx.get(suppRef); if(!suppDoc.exists)throw new Error('Nhà cung cấp không còn tồn tại.'); if(docs.some(d=>!d.exists))throw new Error('Có sản phẩm trong phiếu không còn tồn tại.');
+      tx.set(receiptRef,{receiptNo,supplierId,supplierName:supplier.name,items:items.map(x=>({productId:x.productId,productName:x.productName,qty:x.qty,unit:x.unit,factor:x.factor,baseQty:x.baseQty,cost:x.cost,unitCostBase:x.unitCostBase,lotNumber:x.lotNumber||'',expiry:x.expiry||null,lineTotal:x.lineTotal,baseUnit:x.baseUnit})),total,paidAmount:paid,debtAmount:debt,note,itemCount:items.length,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+      docs.forEach((doc,i)=>{const d=doc.data()||{},g=grouped[ids[i]],oldStock=Number(d.stock)||0,oldCost=Number(d.avgCost??d.cost??0)||0,newStock=oldStock+g.baseQty,avgCost=newStock>0?((oldStock*oldCost)+g.value)/newStock:0;tx.update(refs[i],{stock:newStock,cost:avgCost,avgCost,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});});
+      items.forEach(x=>{const lotRef=storeRef.collection('inventoryLots').doc(),logRef=storeRef.collection('stockLogs').doc();tx.set(lotRef,{productId:x.productId,productName:x.productName,lotNumber:x.lotNumber||'',expiry:x.expiry||null,qtyInitial:x.baseQty,qtyRemaining:x.baseQty,baseUnit:x.baseUnit,unitCost:x.unitCostBase,supplierId,supplierName:supplier.name,purchaseReceiptId:receiptRef.id,createdAt:firebase.firestore.FieldValue.serverTimestamp()});tx.set(logRef,{type:'purchase',productId:x.productId,productName:x.productName,qty:x.baseQty,unit:x.baseUnit,cost:x.unitCostBase,lotNumber:x.lotNumber||'',expiry:x.expiry||null,referenceId:receiptRef.id,createdAt:firebase.firestore.FieldValue.serverTimestamp()});});
+      if(debt>0){const oldDebt=Number(suppDoc.data().debt||0),upd={debt:oldDebt+debt};if(oldDebt<=0)upd.debtSince=firebase.firestore.FieldValue.serverTimestamp();tx.update(suppRef,upd);tx.set(storeRef.collection('supplierDebtLedger').doc(),{supplierId,supplierName:supplier.name,type:'purchase',debit:debt,credit:0,description:'Phiếu nhập '+receiptNo+' · '+items.length+' dòng hàng',referenceId:receiptRef.id,createdAt:firebase.firestore.FieldValue.serverTimestamp()});}
+    });
+    bulkStockInItems=[];closeModal('bulkStockInModal');alert('Đã lưu '+receiptNo+'\nTổng tiền: '+money(total)+'\nĐã trả: '+money(paid)+'\nCòn nợ NCC: '+money(debt));
+  }catch(e){alert('Lỗi lưu phiếu nhập: '+e.message);}finally{btn.disabled=false;btn.textContent='✅ Lưu phiếu & nhập kho';}
 }
+
 // ---------- BÁN HÀNG (POS) ----------
 function renderPosProductList(){
   const q = (document.getElementById('posSearch').value || '').toLowerCase();
@@ -3168,25 +2274,9 @@ function addToCartUnit(productId, encodedUnit){
   const available = availableBaseStock(p);
   const alreadyBase = cart.filter(c=>c.productId===productId).reduce((sum,c)=>sum+c.qty*(Number(c.factor)||1),0);
   if (alreadyBase + u.factor > available){ alert('Không đủ tồn kho có thể bán. Hàng hết hạn không được tính vào tồn bán.'); return; }
-
-  const unitCost = (Number(p.avgCost ?? p.cost) || 0) * (Number(u.factor)||1);
-  const unitPrice = Number(u.price)||0;
-  if (unitCost > 0 && unitPrice < unitCost){
-    const lossPerUnit = unitCost - unitPrice;
-    const ok = confirm(
-      '⚠️ CẢNH BÁO LỖ VỐN!\n\n' +
-      p.name + ' (' + u.name + ')\n' +
-      'Giá vốn: ' + money(unitCost) + '\n' +
-      'Giá bán: ' + money(unitPrice) + '\n' +
-      'Lỗ mỗi ' + u.name + ': ' + money(lossPerUnit) + '\n\n' +
-      'Vẫn muốn bán với giá này?'
-    );
-    if (!ok) return;
-  }
-
   const existing = cart.find(c => c.productId === productId && c.unit === u.name);
   if (existing) existing.qty++;
-  else cart.push({ productId, name:p.name, price:unitPrice, unit:u.name, factor:Number(u.factor)||1, qty:1, cost:(Number(p.cost)||0)*(Number(u.factor)||1) });
+  else cart.push({ productId, name:p.name, price:Number(u.price)||0, unit:u.name, factor:Number(u.factor)||1, qty:1, cost:(Number(p.cost)||0)*(Number(u.factor)||1) });
   renderCart();
 }
 function changeCartQtyAt(index, delta){
@@ -3243,31 +2333,17 @@ function onPosDebtToggle(){
   wrap.style.display = document.getElementById('posIsDebt').checked ? 'block' : 'none';
   if (!document.getElementById('posIsDebt').checked) document.getElementById('posPaidNow').value = '';
 }
-function lotAllocationText(it, compact=false){
-  const allocs=Array.isArray(it&&it.lotAllocations)?it.lotAllocations:[];
-  if(!allocs.length) return '';
-  const product=products.find(p=>p.id===it.productId);
-  const baseUnit=it.baseUnit || (product&&product.unit) || (Number(it.unitFactor||1)===1?it.unit:'đv gốc') || 'đv gốc';
-  return allocs.map(a=>{
-    const lot=escapeHtmlV211(a.lotNumber||'Không số lô');
-    const qty=Number(a.baseQty||0).toLocaleString('vi-VN');
-    const exp=a.expiry?(' · HSD '+new Date(a.expiry+'T00:00:00').toLocaleDateString('vi-VN')):'';
-    return compact ? `${lot}: ${qty} ${escapeHtmlV211(baseUnit)}` : `📦 ${lot}${exp} → <b>${qty} ${escapeHtmlV211(baseUnit)}</b>`;
-  }).join(compact?' · ':'<br>');
-}
 function renderInvoice(sale){
   const d = sale.createdAt && sale.createdAt.toDate ? sale.createdAt.toDate() : new Date();
   const dateStr = d.toLocaleDateString('vi-VN') + ' ' + d.toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'});
-  const rows = (sale.items||[]).map(it => {
-    const lotText=lotAllocationText(it,false);
-    return `
+  const rows = (sale.items||[]).map(it => `
     <tr>
-      <td>${escapeHtmlV211(it.name)}${lotText?`<div style="font-size:10.5px;color:#8a7a5f;line-height:1.45;margin-top:4px;">${lotText}</div>`:''}</td>
-      <td>${it.qty} ${escapeHtmlV211(it.unit||'')}</td>
+      <td>${it.name}</td>
+      <td>${it.qty} ${it.unit}</td>
       <td>${money(it.price)}</td>
       <td>${money(it.price*it.qty)}</td>
     </tr>
-  `;}).join('');
+  `).join('');
   document.getElementById('invoiceContent').innerHTML = `
     <div class="inv-store-name">🌾 ${currentStoreName}</div>
     <div class="inv-store-info">
@@ -3369,20 +2445,13 @@ function openDraftOrder(){
   const total=cart.reduce((s,c)=>s+c.price*c.qty,0);
   const pay=validatePaymentForCart(total); if(!pay) return;
   const customer=customers.find(c=>c.id===pay.customerId);
-  for(const p of products){
-    const wanted=cart.filter(c=>c.productId===p.id).reduce((sum,c)=>sum+c.qty*(Number(c.factor)||1),0);
-    if(wanted>availableBaseStock(p)){alert('Không đủ tồn có thể bán của '+p.name+'. Vui lòng kiểm tra lại giỏ hàng.');return;}
-  }
-  const lotPlans=allocateLotsForCart(cart);
-  const legacyIndex=lotPlans.findIndex(x=>Number(x.legacyQty||0)>0.000001);
-  if(legacyIndex>=0){alert('Tồn kho của "'+cart[legacyIndex].name+'" chưa được gắn đủ vào lô. Vui lòng kiểm tra dữ liệu V2.1 trước khi bán.');return;}
-  let html=`<div class="card-tight card" style="margin-bottom:12px;">Khách hàng: <b>${escapeHtmlV211(customer?customer.name:'Khách lẻ')}</b></div>`;
-  html+=`<div class="card-tight card" style="margin-bottom:12px;border-color:var(--leaf-500);"><b style="color:var(--leaf-500);">📦 Lô dự kiến xuất (FEFO)</b><div class="prod-meta" style="margin-top:5px;line-height:1.5;">Hệ thống ưu tiên lô có hạn sử dụng gần nhất trước. Lô đã hết hạn không được đưa vào đơn.</div></div><div class="card">`;
+  const plans=allocateLotsForCart(cart);
+  const bad=plans.findIndex(x=>Number(x.legacyQty||0)>0.000001);
+  if(bad>=0){alert('Tồn kho của "'+cart[bad].name+'" chưa được gắn đủ vào lô. Vui lòng kiểm tra dữ liệu trước khi bán.');return;}
+  let html=`<div class="card-tight card" style="margin-bottom:12px;">Khách hàng: <b>${customer?customer.name:'Khách lẻ'}</b></div><div class="card">`;
   cart.forEach((c,i)=>{
-    const product=products.find(p=>p.id===c.productId);
-    const previewItem={...c,unitFactor:Number(c.factor)||1,baseUnit:(product&&product.unit)||c.unit,lotAllocations:lotPlans[i].allocations};
-    const lotText=lotAllocationText(previewItem,false);
-    html+=`<div class="prod-item" style="align-items:flex-start;"><div style="flex:1;"><div class="prod-name">${escapeHtmlV211(c.name)}</div><div class="prod-meta">${c.qty} ${escapeHtmlV211(c.unit)} x ${money(c.price)}</div>${lotText?`<div style="font-size:11.5px;color:var(--wheat-400);line-height:1.6;margin-top:6px;">${lotText}</div>`:''}</div><div class="mono">${money(c.price*c.qty)}</div></div>`;
+    const lotText=(plans[i].allocations||[]).map(a=>{const lot=inventoryLots.find(l=>l.id===a.lotId);return `📦 ${escapeHtmlV211(a.lotNumber||lot?.lotNumber||'Không mã')} · HSD ${escapeHtmlV211(lot?.expiry||'—')} → ${Number(a.baseQty||0).toLocaleString('vi-VN')} ${escapeHtmlV211(lot?.baseUnit||products.find(p=>p.id===c.productId)?.unit||'ĐV')}`;}).join('<br>');
+    html+=`<div class="prod-item"><div style="flex:1;"><div class="prod-name">${c.name}</div><div class="prod-meta">${c.qty} ${c.unit} x ${money(c.price)}</div>${lotText?`<div class="prod-meta" style="margin-top:5px;color:var(--leaf-500);line-height:1.5;"><b>Lô sẽ xuất theo FEFO:</b><br>${lotText}</div>`:''}</div><div class="mono">${money(c.price*c.qty)}</div></div>`;
   });
   html+='</div>';
   html+=`<div class="cart-total grand" style="margin-top:10px;"><span>Tổng cộng</span><span class="mono">${money(total)}</span></div>`;
@@ -3405,7 +2474,7 @@ function checkout(){
     alert('Tồn kho của "'+cart[legacyIndex].name+'" chưa được gắn đủ vào lô. Vui lòng vào Cài đặt > Dữ liệu V2.1 để kiểm tra trước khi bán.');
     return;
   }
-  const saleItems=cart.map((c,i)=>{const p=products.find(x=>x.id===c.productId);return {productId:c.productId,name:c.name,price:c.price,qty:c.qty,unit:c.unit,unitFactor:Number(c.factor)||1,baseUnit:(p&&p.unit)||c.unit,baseQty:c.qty*(Number(c.factor)||1),cost:c.cost||0,lotAllocations:lotPlans[i].allocations,legacyQty:0};});
+  const saleItems=cart.map((c,i)=>({productId:c.productId,name:c.name,price:c.price,qty:c.qty,unit:c.unit,unitFactor:Number(c.factor)||1,baseQty:c.qty*(Number(c.factor)||1),cost:c.cost||0,lotAllocations:lotPlans[i].allocations,legacyQty:0}));
   const batch=db.batch(); const saleRef=storeRef.collection('sales').doc();
   batch.set(saleRef,{items:saleItems,total,paidAmount:pay.paidNow,debtAmount:pay.debtAmount,customerId:pay.customerId||null,customerName:customer?customer.name:'Khách lẻ',isDebt:!!pay.isDebt,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
   const lotTotals={};
@@ -3437,15 +2506,7 @@ function renderDebtList(){
     box.innerHTML = '<div class="empty-state"><div class="ic">📒</div>Chưa có khách hàng nào.</div>';
     return;
   }
-  const keyword = (document.getElementById('debtSearch').value || '').trim().toLowerCase();
-  const filtered = customers.filter(c =>
-    !keyword || c.name.toLowerCase().includes(keyword) || (c.phone||'').toLowerCase().includes(keyword)
-  );
-  if (!filtered.length){
-    box.innerHTML = '<div class="empty-state"><div class="ic">🔍</div>Không tìm thấy khách hàng phù hợp.</div>';
-    return;
-  }
-  box.innerHTML = filtered.map(c => `
+  box.innerHTML = customers.map(c => `
     <div class="prod-item" style="align-items:flex-start;">
       <div class="prod-ic">👤</div>
       <div style="flex:1;">
@@ -3986,6 +3047,57 @@ function renderStockAlerts(){
   }
   box.innerHTML=html;
 }
+// ---------- V2.2: CHI PHÍ + THUẾ + PHÂN TÍCH LỢI NHUẬN ----------
+function openExpenseManager(){
+  document.getElementById('expenseDate').value=new Date().toISOString().slice(0,10);
+  document.getElementById('expenseType').value='fixed'; document.getElementById('expenseAmount').value=''; document.getElementById('expenseNote').value='';
+  renderExpenseListV22(); openModal('expenseModal');
+}
+function renderExpenseListV22(){
+  const fixed=expenses.filter(x=>x.type==='fixed').reduce((s,x)=>s+Number(x.amount||0),0),variable=expenses.filter(x=>x.type==='variable').reduce((s,x)=>s+Number(x.amount||0),0);
+  const f=document.getElementById('expenseFixedTotal'),v=document.getElementById('expenseVariableTotal'),box=document.getElementById('expenseList'); if(f)f.textContent=money(fixed);if(v)v.textContent=money(variable);if(!box)return;
+  box.innerHTML=expenses.length?expenses.map(x=>`<div class="prod-item"><div style="flex:1;"><div class="prod-name">${escapeHtmlV211(x.category||'Chi phí')}</div><div class="prod-meta">${escapeHtmlV211(x.expenseDate||'')} · ${x.type==='variable'?'Biến đổi':'Cố định'}${x.note?' · '+escapeHtmlV211(x.note):''}</div></div><div style="text-align:right;"><div class="mono">${money(x.amount||0)}</div><button class="btn btn-sm btn-ghost" style="width:auto;margin-top:4px;" onclick="deleteExpenseV22('${x.id}')">Xóa</button></div></div>`).join(''):'<div class="empty-state">Chưa có chi phí trong tháng này.</div>';
+}
+function saveExpense(){
+  const date=document.getElementById('expenseDate').value,type=document.getElementById('expenseType').value,category=document.getElementById('expenseCategory').value,amount=parseFloat(document.getElementById('expenseAmount').value)||0,note=document.getElementById('expenseNote').value.trim();
+  if(!date){alert('Vui lòng chọn ngày chi.');return;} if(amount<=0){alert('Số tiền chi phí phải lớn hơn 0.');return;}
+  const btn=document.getElementById('expenseSaveBtn');btn.disabled=true;btn.textContent='Đang lưu...';
+  storeRef.collection('expenses').add({expenseDate:date,monthKey:date.slice(0,7),type,category,amount,note,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).then(()=>{document.getElementById('expenseAmount').value='';document.getElementById('expenseNote').value='';alert('Đã ghi nhận chi phí '+money(amount)+'.');}).catch(e=>alert('Lỗi lưu chi phí: '+e.message)).finally(()=>{btn.disabled=false;btn.textContent='+ Ghi nhận chi phí';});
+}
+function deleteExpenseV22(id){if(!confirm('Xóa khoản chi phí này?'))return;storeRef.collection('expenses').doc(id).delete().catch(e=>alert('Không xóa được: '+e.message));}
+function toggleProfitTaxFields(){
+  const m=document.getElementById('profitTaxMode').value;document.getElementById('profitTaxRevenueFields').style.display=m==='revenue'?'block':'none';document.getElementById('profitTaxProfitFields').style.display=m==='profit'?'block':'none';document.getElementById('profitTaxManualFields').style.display=m==='manual'?'block':'none';
+}
+function openProfitSettings(){
+  document.getElementById('profitTrackingStart').value=profitSettings.trackingStartDate||''; document.getElementById('profitTaxMode').value=profitSettings.taxMode||'manual';
+  document.getElementById('profitTaxRate1').value=Number(profitSettings.taxRate1||0);document.getElementById('profitTaxRate2').value=Number(profitSettings.taxRate2||0);document.getElementById('profitTaxProfitRate').value=Number(profitSettings.taxProfitRate||0);document.getElementById('profitTaxManual').value=Number(profitSettings.taxManual||0);document.getElementById('profitTargetInput').value=Number(profitSettings.targetProfit||0);toggleProfitTaxFields();openModal('profitSettingsModal');
+}
+function saveProfitSettings(){
+  const data={trackingStartDate:document.getElementById('profitTrackingStart').value||'',taxMode:document.getElementById('profitTaxMode').value,taxRate1:Math.max(0,parseFloat(document.getElementById('profitTaxRate1').value)||0),taxRate2:Math.max(0,parseFloat(document.getElementById('profitTaxRate2').value)||0),taxProfitRate:Math.max(0,parseFloat(document.getElementById('profitTaxProfitRate').value)||0),taxManual:Math.max(0,parseFloat(document.getElementById('profitTaxManual').value)||0),targetProfit:Math.max(0,parseFloat(document.getElementById('profitTargetInput').value)||0),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+  const btn=document.getElementById('profitSettingsSaveBtn');btn.disabled=true;btn.textContent='Đang lưu...';storeRef.collection('appSettings').doc('profitV22').set(data,{merge:true}).then(()=>{closeModal('profitSettingsModal');alert('Đã lưu cấu hình lợi nhuận V2.2.');}).catch(e=>alert('Lỗi: '+e.message)).finally(()=>{btn.disabled=false;btn.textContent='Lưu cài đặt';});
+}
+function profitMetricsV22(monthRev,monthGrossProfit){
+  const fixed=expenses.filter(x=>x.type==='fixed').reduce((s,x)=>s+Number(x.amount||0),0),variable=expenses.filter(x=>x.type==='variable').reduce((s,x)=>s+Number(x.amount||0),0),totalExpenses=fixed+variable;
+  const netRevenue=Number(monthRev)||0,grossProfit=Number(monthGrossProfit)||0,cogs=netRevenue-grossProfit,grossMargin=netRevenue>0?grossProfit/netRevenue:0,pretax=grossProfit-totalExpenses,pretaxMargin=netRevenue>0?pretax/netRevenue:0;
+  const mode=profitSettings.taxMode||'manual',r1=Number(profitSettings.taxRate1||0)/100,r2=Number(profitSettings.taxRate2||0)/100,profitRate=Number(profitSettings.taxProfitRate||0)/100,manualTax=Number(profitSettings.taxManual||0),target=Number(profitSettings.targetProfit||0);
+  let tax=0;if(mode==='revenue')tax=netRevenue*(r1+r2);else if(mode==='profit')tax=Math.max(0,pretax)*profitRate;else tax=manualTax;
+  const afterTax=pretax-tax,netMargin=netRevenue>0?afterTax/netRevenue:0,contribution=netRevenue-cogs-variable,cmr=netRevenue>0?contribution/netRevenue:0;
+  let breakEven=Infinity,targetRevenue=Infinity;
+  if(mode==='revenue'){const afterTaxCmr=cmr-(r1+r2);if(afterTaxCmr>0){breakEven=fixed/afterTaxCmr;targetRevenue=(fixed+target)/afterTaxCmr;}}
+  else if(mode==='profit'){if(cmr>0){breakEven=fixed/cmr;const preTarget=profitRate<1?target/(1-profitRate):Infinity;targetRevenue=(fixed+preTarget)/cmr;}}
+  else {if(cmr>0){breakEven=(fixed+manualTax)/cmr;targetRevenue=(fixed+manualTax+target)/cmr;}}
+  const safety=isFinite(breakEven)?netRevenue-breakEven:0,safetyPct=netRevenue>0?safety/netRevenue:0,progress=isFinite(breakEven)&&breakEven>0?netRevenue/breakEven*100:0;
+  return {fixed,variable,totalExpenses,netRevenue,cogs,grossProfit,grossMargin,pretax,pretaxMargin,tax,afterTax,netMargin,cmr,breakEven,target,targetRevenue,safety,safetyPct,progress};
+}
+function renderProfitAnalysisV22(monthRev,monthGrossProfit){
+  const m=profitMetricsV22(monthRev,monthGrossProfit),pct=v=>(isFinite(v)?v:0).toLocaleString('vi-VN',{maximumFractionDigits:2})+'%';
+  const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
+  set('statMonthCogs',money(m.cogs));set('statOperatingExpenses',money(m.totalExpenses));set('statGrossMargin',pct(m.grossMargin*100));set('statPretaxProfit',money(m.pretax));set('statEstimatedTax',money(m.tax));set('statAfterTaxProfit',money(m.afterTax));set('statNetMargin',pct(m.netMargin*100));set('statContributionMargin',pct(m.cmr*100));set('statBreakEvenRevenue',isFinite(m.breakEven)?money(m.breakEven):'Chưa tính được');set('statSafetyMargin',isFinite(m.breakEven)?money(m.safety):'—');set('statSafetyMarginPct',isFinite(m.breakEven)?pct(m.safetyPct*100):'—');set('statBreakEvenProgressText',isFinite(m.breakEven)?pct(m.progress):'—');set('statProfitTarget',money(m.target));set('statTargetRevenue',isFinite(m.targetRevenue)?money(m.targetRevenue):'Chưa tính được');
+  const bar=document.getElementById('statBreakEvenProgress');if(bar)bar.style.width=Math.max(0,Math.min(100,m.progress))+'%';
+  const complete=document.getElementById('profitCompletenessBox');if(complete){const hasExpense=expenses.length>0,hasSettings=!!profitSettings.trackingStartDate||Number(profitSettings.taxRate1||0)>0||Number(profitSettings.taxRate2||0)>0||Number(profitSettings.taxProfitRate||0)>0||Number(profitSettings.taxManual||0)>0;const now=new Date(),monthStart=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-01',partial=profitSettings.trackingStartDate&&profitSettings.trackingStartDate>monthStart;complete.innerHTML=(!hasExpense?'⚠️ <b>Chưa có chi phí tháng này.</b> LN ròng có thể chưa đầy đủ. ':'✅ Đã có dữ liệu chi phí tháng này. ')+(!hasSettings?'⚠️ Chưa cấu hình thuế/mốc theo dõi.':'Thuế đang được hiển thị dưới dạng <b>ước tính quản trị</b>.')+(partial?'<br>⚠️ Mốc theo dõi đầy đủ bắt đầu từ <b>'+escapeHtmlV211(profitSettings.trackingStartDate)+'</b>, vì vậy số LN ròng của tháng đầu có thể chưa đủ chi phí trước mốc này.':'');}
+  const insight=document.getElementById('profitInsight');if(insight){let t=`Cứ 100.000đ doanh thu thuần, cửa hàng tạo khoảng <b>${money(m.grossMargin*100000)}</b> lãi gộp và còn khoảng <b>${money(m.netMargin*100000)}</b> lợi nhuận sau thuế ước tính. `;if(isFinite(m.breakEven))t+=m.netRevenue>=m.breakEven?`Doanh thu hiện vượt hòa vốn khoảng <b>${money(m.safety)}</b>. `:`Cần thêm khoảng <b>${money(m.breakEven-m.netRevenue)}</b> để chạm hòa vốn. `;if(isFinite(m.targetRevenue)&&m.target>0)t+=`Muốn đạt <b>${money(m.target)}</b> LN sau thuế, doanh thu ước tính cần khoảng <b>${money(m.targetRevenue)}</b>.`;insight.innerHTML=t;}
+}
+
 function renderReports(){
   renderStockAlerts();
   const now=new Date();
@@ -4017,11 +3129,12 @@ function renderReports(){
   document.getElementById('statTodayProfit').textContent=money(todayProfit);
   document.getElementById('statMonthProfit').textContent=money(monthProfit);
   document.getElementById('statCurrentDebt').textContent=money(totalDebtNow);
+  renderProfitAnalysisV22(monthRev,monthProfit);
   const top=Object.entries(productSalesCount).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const topBox=document.getElementById('topProductsList');
   topBox.innerHTML=top.length?top.map(([name,qty],i)=>`<div class="prod-item"><div style="width:26px;color:var(--wheat-400);font-weight:700;">${i+1}</div><div style="flex:1;">${name}</div><div class="mono">${Number(qty).toLocaleString('vi-VN')} ĐV gốc</div></div>`).join(''):'<div class="empty-state">Chưa có dữ liệu bán hàng tháng này.</div>';
   const recentBox=document.getElementById('recentSales');
-  recentBox.innerHTML=sales.slice(0,10).map(s=>{const lotNames=[...new Set((s.items||[]).flatMap(it=>(it.lotAllocations||[]).map(a=>a.lotNumber||'Không số lô')))];return `<div class="prod-item"><div style="flex:1;"><div class="prod-name">${escapeHtmlV211(s.customerName||'Khách lẻ')}</div><div class="prod-meta">${(s.items||[]).length} sản phẩm ${s.isDebt?'· Ghi nợ':''}</div>${lotNames.length?`<div class="prod-meta" style="color:var(--wheat-400);">📦 Lô xuất: ${lotNames.map(escapeHtmlV211).join(', ')}</div>`:''}</div><div style="text-align:right;"><div class="mono">${money(s.total)}</div><div style="display:flex;gap:4px;margin-top:4px;justify-content:flex-end;"><button class="btn btn-sm btn-ghost" onclick="reprintSale('${s.id}')">🖨️ In</button><button class="btn btn-sm btn-ghost" onclick="openReturnModal('${s.id}')">↩️ Trả</button></div></div></div>`;}).join('')||'<div class="empty-state">Chưa có hoá đơn nào.</div>';
+  recentBox.innerHTML=sales.slice(0,10).map(s=>`<div class="prod-item"><div style="flex:1;"><div class="prod-name">${s.customerName||'Khách lẻ'}</div><div class="prod-meta">${(s.items||[]).length} sản phẩm ${s.isDebt?'· Ghi nợ':''}</div></div><div style="text-align:right;"><div class="mono">${money(s.total)}</div><div style="display:flex;gap:4px;margin-top:4px;justify-content:flex-end;"><button class="btn btn-sm btn-ghost" onclick="reprintSale('${s.id}')">🖨️ In</button><button class="btn btn-sm btn-ghost" onclick="openReturnModal('${s.id}')">↩️ Trả</button></div></div></div>`).join('')||'<div class="empty-state">Chưa có hoá đơn nào.</div>';
 }
 </script>
 </body>
