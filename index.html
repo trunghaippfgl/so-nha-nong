@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sổ Nhà Nông V2.4</title>
+<title>Sổ Nhà Nông V2.4.1</title>
 <link rel="icon" type="image/png" href="icon.png">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="manifest" href="manifest.json">
@@ -155,11 +155,26 @@
   .badge-exp{ background:var(--wheat-dim); color:var(--wheat-400); }
   .badge-expired{ background:var(--rust-500); color:#fff; }
   .table-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; border:1px solid var(--line); border-radius:12px; }
+  .inventory-ledger-scroll{
+    max-height:420px; overflow:auto; overscroll-behavior:contain;
+    touch-action:pan-x pan-y; scrollbar-gutter:stable;
+  }
   .ledger-table{ width:100%; min-width:690px; border-collapse:collapse; font-size:12px; }
-  .ledger-table th{ position:sticky; top:0; background:var(--soil-800); color:var(--cream-300); padding:9px 8px; text-align:right; white-space:nowrap; border-bottom:1px solid var(--line); }
-  .ledger-table th:first-child,.ledger-table td:first-child{ text-align:left; position:sticky; left:0; background:var(--soil-900); z-index:1; }
+  .ledger-table th{ position:sticky; top:0; z-index:2; background:var(--soil-800); color:var(--cream-300); padding:9px 8px; text-align:right; white-space:nowrap; border-bottom:1px solid var(--line); }
+  .ledger-table th:first-child,.ledger-table td:first-child{
+    width:128px; min-width:128px; max-width:128px; text-align:left;
+    position:sticky; left:0; background:var(--soil-900); z-index:1;
+    white-space:normal; overflow-wrap:anywhere;
+  }
+  .ledger-table th:first-child{ z-index:3; background:var(--soil-800); }
+  .ledger-product-name{ display:block; font-size:12px; line-height:1.3; }
   .ledger-table td{ padding:9px 8px; text-align:right; border-bottom:1px solid var(--line); white-space:nowrap; }
   .ledger-table tr:last-child td{ border-bottom:none; }
+  .stock-product-scroll,.bulk-items-scroll{
+    max-height:420px; overflow-y:auto; overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch; touch-action:pan-y;
+  }
+  .bulk-items-scroll{ max-height:300px; }
   .signature-pad{ width:100%; height:150px; background:#fff; border:2px dashed #c9bfa9; border-radius:10px; touch-action:none; display:block; }
   .signature-image{ max-width:220px; max-height:90px; border:1px solid #ddd; background:#fff; border-radius:6px; margin-top:6px; }
   .invoice-qr{ width:170px; height:170px; object-fit:contain; display:block; margin:8px auto 4px; }
@@ -298,7 +313,7 @@
 <div id="app">
   <div class="topbar">
     <div>
-      <div class="brand">🌾 Sổ Nhà Nông <span style="font-family:'Be Vietnam Pro',sans-serif;font-size:10px;color:var(--cream-500);font-weight:600;">V2.4</span></div>
+      <div class="brand">🌾 Sổ Nhà Nông <span style="font-family:'Be Vietnam Pro',sans-serif;font-size:10px;color:var(--cream-500);font-weight:600;">V2.4.1</span></div>
       <div class="sub" id="storeGreeting">Xin chào</div>
     </div>
     <div style="text-align:right;">
@@ -358,6 +373,12 @@
     <div class="search-box">
       <input id="stockSearch" placeholder="Tìm theo tên, mã..." oninput="renderStockList()">
     </div>
+    <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
+      <button class="btn btn-ghost" style="flex:1; min-width:125px;" onclick="document.getElementById('excelImportInput').click()">📥 Nhập Excel</button>
+      <button class="btn btn-ghost" style="flex:1; min-width:125px;" onclick="openStocktake()">🧮 Kiểm kê kho</button>
+      <button class="btn btn-leaf" style="flex:1; min-width:150px;" onclick="openBulkStockIn()">📋 Phiếu nhập nhiều SP</button>
+      <input type="file" id="excelImportInput" accept=".xlsx,.xls,.csv" style="display:none;" onchange="handleExcelImport(event)">
+    </div>
     <div class="card-tight card" style="margin-bottom:10px;">
       <div style="display:flex; gap:8px; align-items:flex-end;">
         <div style="flex:1;"><label style="margin-top:0;">Sổ tồn kho tháng</label><input id="inventoryLedgerMonth" type="month" onchange="loadInventoryLedgerV24()"></div>
@@ -366,13 +387,7 @@
       <div class="prod-meta" style="margin-top:7px;">Tồn đầu + Nhập + Điều chỉnh − Bán = Tồn cuối. Chạm tên sản phẩm để nhập thêm hàng.</div>
     </div>
     <div id="inventoryLedgerBox" style="margin-bottom:14px;"><div class="empty-state" style="padding:16px;">Đang tải sổ kho...</div></div>
-    <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
-      <button class="btn btn-ghost" style="flex:1; min-width:125px;" onclick="document.getElementById('excelImportInput').click()">📥 Nhập Excel</button>
-      <button class="btn btn-leaf" style="flex:1; min-width:150px;" onclick="openBulkStockIn()">📋 Phiếu nhập nhiều SP</button>
-      <button class="btn btn-ghost" style="flex:1; min-width:125px;" onclick="openStocktake()">🧮 Kiểm kê kho</button>
-      <input type="file" id="excelImportInput" accept=".xlsx,.xls,.csv" style="display:none;" onchange="handleExcelImport(event)">
-    </div>
-    <div class="card" id="stockList"></div>
+    <div class="card stock-product-scroll" id="stockList"></div>
   </div>
 
   <!-- ---- TAB: CÔNG NỢ ---- -->
@@ -695,7 +710,7 @@
       <button class="btn btn-primary" style="margin-top:12px;" onclick="addBulkStockInItem()">+ Thêm vào phiếu</button>
     </div>
     <div class="section-title">Các mặt hàng trong phiếu</div>
-    <div class="card" id="bulkStockInItems"><div class="empty-state" style="padding:18px;">Chưa có sản phẩm trong phiếu nhập.</div></div>
+    <div class="card bulk-items-scroll" id="bulkStockInItems"><div class="empty-state" style="padding:18px;">Chưa có sản phẩm trong phiếu nhập.</div></div>
     <label>Đã thanh toán cho NCC</label><input id="bulkStockInPaid" type="number" min="0" inputmode="decimal" placeholder="0" oninput="updateBulkStockInSummary()">
     <label>Ghi chú phiếu nhập</label><textarea id="bulkStockInNote" rows="2" placeholder="VD: Hóa đơn số 125, giao hàng đợt tháng 8..."></textarea>
     <div class="card-tight card" style="margin-top:12px; line-height:1.8;">
@@ -3266,7 +3281,7 @@ async function loadInventoryLedgerV24(){
     Object.values(stats).forEach(x=>{x.closing=Number(x.p.stock||0)-x.afterNet;x.opening=x.closing-x.purchase-x.adjust+x.sold;});
     const rows=Object.values(stats).sort((a,b)=>(a.p.name||'').localeCompare(b.p.name||'','vi'));
     const totals=rows.reduce((a,x)=>{a.opening+=x.opening;a.purchase+=x.purchase;a.adjust+=x.adjust;a.sold+=x.sold;a.closing+=x.closing;return a;},{opening:0,purchase:0,adjust:0,sold:0,closing:0});
-    box.innerHTML=`<div class="table-scroll"><table class="ledger-table"><thead><tr><th>Sản phẩm</th><th>Tồn đầu</th><th>Nhập</th><th>Điều chỉnh</th><th>Đã bán</th><th>Tồn cuối</th></tr></thead><tbody>${rows.map(x=>`<tr><td onclick="openStockIn('${x.p.id}')" style="cursor:pointer;"><b>${escapeHtmlV211(x.p.name)}</b><div class="prod-meta">${escapeHtmlV211(x.p.unit||'')} · chạm để nhập hàng</div></td><td>${x.opening.toLocaleString('vi-VN')}</td><td>${x.purchase.toLocaleString('vi-VN')}</td><td>${x.adjust>0?'+':''}${x.adjust.toLocaleString('vi-VN')}</td><td>${x.sold.toLocaleString('vi-VN')}</td><td><b>${x.closing.toLocaleString('vi-VN')}</b></td></tr>`).join('')}<tr><td><b>TỔNG SỐ LƯỢNG</b></td><td><b>${totals.opening.toLocaleString('vi-VN')}</b></td><td><b>${totals.purchase.toLocaleString('vi-VN')}</b></td><td><b>${totals.adjust.toLocaleString('vi-VN')}</b></td><td><b>${totals.sold.toLocaleString('vi-VN')}</b></td><td><b>${totals.closing.toLocaleString('vi-VN')}</b></td></tr></tbody></table></div><div class="prod-meta" style="margin-top:7px;line-height:1.5;">Số liệu cũ được dựng lại từ hóa đơn và nhật ký kho. Các giao dịch mới tiếp tục được cập nhật tự động.</div>`;
+    box.innerHTML=`<div class="table-scroll inventory-ledger-scroll"><table class="ledger-table"><thead><tr><th>Sản phẩm</th><th>Tồn đầu</th><th>Nhập</th><th>Điều chỉnh</th><th>Đã bán</th><th>Tồn cuối</th></tr></thead><tbody>${rows.map(x=>`<tr><td onclick="openStockIn('${x.p.id}')" style="cursor:pointer;"><b class="ledger-product-name">${escapeHtmlV211(x.p.name)}</b><div class="prod-meta">${escapeHtmlV211(x.p.unit||'')} · chạm để nhập hàng</div></td><td>${x.opening.toLocaleString('vi-VN')}</td><td>${x.purchase.toLocaleString('vi-VN')}</td><td>${x.adjust>0?'+':''}${x.adjust.toLocaleString('vi-VN')}</td><td>${x.sold.toLocaleString('vi-VN')}</td><td><b>${x.closing.toLocaleString('vi-VN')}</b></td></tr>`).join('')}<tr><td><b>TỔNG SỐ LƯỢNG</b></td><td><b>${totals.opening.toLocaleString('vi-VN')}</b></td><td><b>${totals.purchase.toLocaleString('vi-VN')}</b></td><td><b>${totals.adjust.toLocaleString('vi-VN')}</b></td><td><b>${totals.sold.toLocaleString('vi-VN')}</b></td><td><b>${totals.closing.toLocaleString('vi-VN')}</b></td></tr></tbody></table></div><div class="prod-meta" style="margin-top:7px;line-height:1.5;">Vuốt ngang hoặc dọc để xem toàn bộ sổ. Số liệu cũ được dựng lại từ hóa đơn và nhật ký kho; các giao dịch mới tiếp tục được cập nhật tự động.</div>`;
   }catch(e){box.innerHTML='<div class="card-tight card" style="color:var(--rust-500);">Không tải được sổ kho: '+escapeHtmlV211(e.message||String(e))+'</div>';}
   finally{inventoryLedgerLoadingV24=false;}
 }
