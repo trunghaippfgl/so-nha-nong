@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sổ Nhà Nông V2.1.1</title>
+<title>Sổ Nhà Nông V2.4</title>
 <link rel="icon" type="image/png" href="icon.png">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="manifest" href="manifest.json">
@@ -154,6 +154,19 @@
   .badge-low{ background:var(--rust-dim); color:var(--rust-500); }
   .badge-exp{ background:var(--wheat-dim); color:var(--wheat-400); }
   .badge-expired{ background:var(--rust-500); color:#fff; }
+  .table-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; border:1px solid var(--line); border-radius:12px; }
+  .ledger-table{ width:100%; min-width:690px; border-collapse:collapse; font-size:12px; }
+  .ledger-table th{ position:sticky; top:0; background:var(--soil-800); color:var(--cream-300); padding:9px 8px; text-align:right; white-space:nowrap; border-bottom:1px solid var(--line); }
+  .ledger-table th:first-child,.ledger-table td:first-child{ text-align:left; position:sticky; left:0; background:var(--soil-900); z-index:1; }
+  .ledger-table td{ padding:9px 8px; text-align:right; border-bottom:1px solid var(--line); white-space:nowrap; }
+  .ledger-table tr:last-child td{ border-bottom:none; }
+  .signature-pad{ width:100%; height:150px; background:#fff; border:2px dashed #c9bfa9; border-radius:10px; touch-action:none; display:block; }
+  .signature-image{ max-width:220px; max-height:90px; border:1px solid #ddd; background:#fff; border-radius:6px; margin-top:6px; }
+  .invoice-qr{ width:170px; height:170px; object-fit:contain; display:block; margin:8px auto 4px; }
+  .s1a-paper{ background:#fff; color:#111; padding:20px; min-width:720px; font-family:Arial,sans-serif; }
+  .s1a-paper table{ width:100%; border-collapse:collapse; font-size:12px; margin-top:14px; }
+  .s1a-paper th,.s1a-paper td{ border:1px solid #333; padding:6px; }
+  .s1a-paper th{ text-align:center; }
 
   /* Cart (POS) */
   .cart-item{
@@ -235,8 +248,11 @@
   #invoiceModal .inv-box{ flex:1; overflow-y:auto; border-radius:0; }
   @media print{
     body *{ visibility:hidden; }
-    #invoiceArea, #invoiceArea *{ visibility:visible; }
-    #invoiceArea{ display:block !important; position:absolute; top:0; left:0; width:100%; }
+    body:not(.print-s1a) #invoiceArea, body:not(.print-s1a) #invoiceArea *{ visibility:visible; }
+    body:not(.print-s1a) #invoiceArea{ display:block !important; position:absolute; top:0; left:0; width:100%; }
+    body.print-s1a #s1aPrintArea, body.print-s1a #s1aPrintArea *{ visibility:visible; }
+    body.print-s1a #s1aPrintArea{ display:block !important; position:absolute; top:0; left:0; width:100%; overflow:visible; }
+    body.print-s1a .s1a-paper{ min-width:0; padding:0; }
   }
 </style>
 </head>
@@ -282,7 +298,7 @@
 <div id="app">
   <div class="topbar">
     <div>
-      <div class="brand">🌾 Sổ Nhà Nông <span style="font-family:'Be Vietnam Pro',sans-serif;font-size:10px;color:var(--cream-500);font-weight:600;">V2.1.1</span></div>
+      <div class="brand">🌾 Sổ Nhà Nông <span style="font-family:'Be Vietnam Pro',sans-serif;font-size:10px;color:var(--cream-500);font-weight:600;">V2.4</span></div>
       <div class="sub" id="storeGreeting">Xin chào</div>
     </div>
     <div style="text-align:right;">
@@ -342,6 +358,14 @@
     <div class="search-box">
       <input id="stockSearch" placeholder="Tìm theo tên, mã..." oninput="renderStockList()">
     </div>
+    <div class="card-tight card" style="margin-bottom:10px;">
+      <div style="display:flex; gap:8px; align-items:flex-end;">
+        <div style="flex:1;"><label style="margin-top:0;">Sổ tồn kho tháng</label><input id="inventoryLedgerMonth" type="month" onchange="loadInventoryLedgerV24()"></div>
+        <button class="btn btn-ghost btn-sm" style="width:auto; margin-bottom:1px;" onclick="loadInventoryLedgerV24()">Xem kho</button>
+      </div>
+      <div class="prod-meta" style="margin-top:7px;">Tồn đầu + Nhập + Điều chỉnh − Bán = Tồn cuối. Chạm tên sản phẩm để nhập thêm hàng.</div>
+    </div>
+    <div id="inventoryLedgerBox" style="margin-bottom:14px;"><div class="empty-state" style="padding:16px;">Đang tải sổ kho...</div></div>
     <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
       <button class="btn btn-ghost" style="flex:1; min-width:125px;" onclick="document.getElementById('excelImportInput').click()">📥 Nhập Excel</button>
       <button class="btn btn-leaf" style="flex:1; min-width:150px;" onclick="openBulkStockIn()">📋 Phiếu nhập nhiều SP</button>
@@ -385,23 +409,32 @@
     <div class="section-title" style="margin-top:0;">Cảnh báo tồn kho</div>
     <div class="card" id="stockAlertBox" style="margin-bottom:16px; max-height:280px; overflow-y:auto;"></div>
 
+    <div class="card-tight card" style="margin-bottom:14px;">
+      <label style="margin-top:0;">Xem báo cáo theo tháng</label>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <select id="reportMonthSelect" style="flex:1;" onchange="selectReportMonthV23(this.value)"></select>
+        <button class="btn btn-ghost btn-sm" style="width:auto; white-space:nowrap;" onclick="loadReportHistoryV23(true)">🔄 Làm mới</button>
+      </div>
+      <div class="prod-meta" id="reportMonthStatus" style="margin-top:7px;">Đang tải danh sách tháng...</div>
+    </div>
+
     <div class="stat-row" style="margin-bottom:10px;">
       <div class="stat wheat"><div class="label">Doanh thu hôm nay</div><div class="value mono" id="statTodayRevenue">0đ</div></div>
       <div class="stat leaf"><div class="label">Đã thu hôm nay</div><div class="value mono" id="statTodayCollected">0đ</div></div>
     </div>
     <div class="stat-row" style="margin-bottom:14px;">
-      <div class="stat wheat"><div class="label">Doanh thu tháng này</div><div class="value mono" id="statMonthRevenue">0đ</div></div>
-      <div class="stat leaf"><div class="label">Đã thu tháng này</div><div class="value mono" id="statMonthCollected">0đ</div></div>
+      <div class="stat wheat"><div class="label" id="monthRevenueLabel">Doanh thu tháng này</div><div class="value mono" id="statMonthRevenue">0đ</div></div>
+      <div class="stat leaf"><div class="label" id="monthCollectedLabel">Đã thu tháng này</div><div class="value mono" id="statMonthCollected">0đ</div></div>
     </div>
     <div class="stat-row" style="margin-bottom:14px;">
       <div class="stat leaf"><div class="label">Lãi gộp hôm nay</div><div class="value mono" id="statTodayProfit">0đ</div></div>
-      <div class="stat leaf"><div class="label">Lãi gộp tháng này</div><div class="value mono" id="statMonthProfit">0đ</div></div>
+      <div class="stat leaf"><div class="label" id="monthProfitLabel">Lãi gộp tháng này</div><div class="value mono" id="statMonthProfit">0đ</div></div>
     </div>
     <div class="stat-row" style="margin-bottom:14px;">
       <div class="stat rust"><div class="label">Tổng nợ hiện tại</div><div class="value mono" id="statCurrentDebt">0đ</div></div>
     </div>
 
-    <div class="section-title">📈 Phân tích lợi nhuận tháng này</div>
+    <div class="section-title" id="profitAnalysisTitle">📈 Phân tích lợi nhuận tháng này</div>
     <div class="card-tight card" id="profitCompletenessBox" style="font-size:12px; line-height:1.55; margin-bottom:10px;">Đang tính...</div>
     <div class="stat-row" style="margin-bottom:10px;">
       <div class="stat wheat"><div class="label">Giá vốn hàng bán</div><div class="value mono" id="statMonthCogs">0đ</div></div>
@@ -452,10 +485,20 @@
       <button class="btn btn-ghost" style="flex:1;" onclick="openDebtReport()">🧾 Báo cáo công nợ</button>
       <button class="btn btn-ghost" style="flex:1;" onclick="openCustomerStats()">📊 Thống kê khách hàng</button>
     </div>
+    <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
+      <button class="btn btn-ghost" style="flex:1; min-width:145px;" onclick="openS1aReportV24()">📘 Sổ S1a-HKD</button>
+      <button class="btn btn-leaf" id="dailyCloseButton" style="flex:1; min-width:145px;" onclick="openDailyCloseV24()">🔒 Chốt sổ ngày</button>
+    </div>
+    <div class="card-tight card" id="dailyCloseStatus" style="font-size:12px;line-height:1.5;margin-bottom:14px;">Đang kiểm tra trạng thái chốt ngày...</div>
 
-    <div class="section-title">Bán chạy nhất tháng này</div>
+    <div class="section-title" id="topProductsTitle">Bán chạy nhất tháng này</div>
     <div class="card" id="topProductsList"></div>
-    <div class="section-title">Lịch sử bán hàng gần đây</div>
+    <div class="section-title">Lợi nhuận theo từng tháng</div>
+    <div class="card" id="monthlyProfitHistory"><div class="empty-state">Đang tải dữ liệu theo tháng...</div></div>
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:16px;">
+      <div class="section-title" style="margin:0;">Đơn hàng gần đây</div>
+      <button class="btn btn-ghost btn-sm" style="width:auto;" onclick="openOrderHistoryV23()">🗓️ Xem tháng cũ</button>
+    </div>
     <div class="card" id="recentSales"></div>
   </div>
   <div class="navbar">
@@ -763,12 +806,32 @@
     </div>
   </div>
 </div>
+<!-- ============ MODAL: LỊCH SỬ ĐƠN HÀNG THEO THÁNG ============ -->
+<div class="overlay" id="orderHistoryModal">
+  <div class="sheet" style="max-height:92vh; overflow-y:auto;">
+    <button class="sheet-close" onclick="closeModal('orderHistoryModal')">✕</button>
+    <h3>🗓️ Lịch sử đơn hàng</h3>
+    <div class="card-tight card" style="font-size:12px; line-height:1.55;">Chỉ hiển thị những tháng đã có đơn hàng. Có thể tìm theo tên khách hàng hoặc tên sản phẩm.</div>
+    <label>Tháng có giao dịch</label>
+    <select id="orderHistoryMonth" onchange="renderOrderHistoryV23()"></select>
+    <div class="search-box" style="margin-top:10px;">
+      <input id="orderHistorySearch" placeholder="Tìm khách hàng, sản phẩm..." oninput="renderOrderHistoryV23()">
+    </div>
+    <div id="orderHistorySummary" class="card-tight card" style="margin-bottom:10px;"></div>
+    <div class="card" id="orderHistoryList"><div class="empty-state">Đang tải lịch sử...</div></div>
+  </div>
+</div>
 <!-- ============ MODAL: XEM TRƯỚC ĐƠN NHÁP ============ -->
 <div class="overlay" id="draftOrderModal">
   <div class="sheet" style="max-height:85vh; overflow-y:auto;">
     <button class="sheet-close" onclick="closeModal('draftOrderModal')">✕</button>
     <h3>📋 Xem trước đơn hàng</h3>
     <div id="draftOrderContent"></div>
+    <div id="debtSignatureWrap" style="display:none; margin-top:12px;">
+      <div class="card-tight card" style="font-size:12px;line-height:1.55;">✍️ Khách mua nợ có thể ký trực tiếp bên dưới. Chữ ký được lưu cùng đơn hàng để đối chiếu công nợ.</div>
+      <canvas id="debtSignatureCanvas" class="signature-pad" width="600" height="220"></canvas>
+      <div style="display:flex;gap:8px;margin-top:8px;"><button class="btn btn-ghost btn-sm" onclick="clearDebtSignatureV24()">Xóa chữ ký</button><div class="prod-meta" id="debtSignatureStatus" style="align-self:center;">Chưa ký (có thể bỏ qua)</div></div>
+    </div>
     <div style="display:flex; gap:8px; margin-top:16px;">
       <button class="btn btn-ghost" style="flex:1;" onclick="closeModal('draftOrderModal')">✏️ Sửa lại</button>
       <button class="btn btn-primary" style="flex:1;" onclick="confirmDraftOrder()">✅ Xác nhận, xuất đơn</button>
@@ -880,7 +943,7 @@
   <div class="sheet">
     <div style="padding:14px 16px; display:flex; justify-content:space-between; align-items:center; background:var(--soil-950); border-bottom:1px solid var(--line);">
       <span style="font-size:12px; color:var(--cream-500);">📸 Chụp màn hình để lưu/gửi Zalo cho khách</span>
-      <button class="btn btn-ghost btn-sm" onclick="closeModal('invoiceModal')">Đóng</button>
+      <div style="display:flex;gap:6px;"><button class="btn btn-ghost btn-sm" onclick="printInvoice()">🖨️ In</button><button class="btn btn-ghost btn-sm" onclick="closeModal('invoiceModal')">Đóng</button></div>
     </div>
     <div id="invoiceArea">
       <div class="inv-box" id="invoiceContent"></div>
@@ -898,6 +961,19 @@
     <input id="settingStorePhone" placeholder="VD: 0905 123 456">
     <label>Địa chỉ</label>
     <input id="settingStoreAddress" placeholder="VD: Thôn 1, xã Ayun Pa, Gia Lai">
+    <label>Mã số thuế / CCCD dùng trên sổ S1a-HKD</label>
+    <input id="settingTaxCode" placeholder="Không bắt buộc">
+    <div class="ledger-rule" style="margin:18px 0;"></div>
+    <h3>QR nhận chuyển khoản</h3>
+    <div class="card-tight card" style="font-size:12px;line-height:1.55;">Nhập mã ngân hàng VietQR (VD: VCB, BIDV, MB), số tài khoản và tên chủ tài khoản. QR trên đơn sẽ tự điền số tiền cần thanh toán.</div>
+    <label>Mã ngân hàng VietQR</label>
+    <input id="settingBankCode" placeholder="VD: VCB">
+    <label>Số tài khoản</label>
+    <input id="settingBankAccount" inputmode="numeric" placeholder="VD: 0123456789">
+    <label>Tên chủ tài khoản</label>
+    <input id="settingBankName" placeholder="VD: NGUYEN VAN A">
+    <label>Nội dung chuyển khoản mặc định</label>
+    <input id="settingBankNote" placeholder="VD: THANH TOAN DON HANG">
     <div style="margin-top:16px;">
       <button class="btn btn-primary" onclick="saveStoreSettings()">Lưu thông tin</button>
     </div>
@@ -1028,6 +1104,33 @@
   </div>
 </div>
 
+<!-- ============ MODAL: SỔ S1a-HKD ============ -->
+<div class="overlay" id="s1aModal">
+  <div class="sheet" style="max-width:980px;max-height:96vh;overflow-y:auto;">
+    <button class="sheet-close" onclick="closeModal('s1aModal')">✕</button>
+    <h3>📘 Sổ doanh thu bán hàng hóa, dịch vụ – S1a-HKD</h3>
+    <div class="card-tight card" style="font-size:12px;line-height:1.55;">Mẫu quản trị theo Thông tư 152/2025/TT-BTC, áp dụng từ năm 2026. Có thể ghi theo từng đơn hoặc tổng hợp theo ngày.</div>
+    <div class="row"><div><label>Từ ngày</label><input id="s1aFrom" type="date"></div><div><label>Đến ngày</label><input id="s1aTo" type="date"></div></div>
+    <label>Cách ghi sổ</label><select id="s1aMode" onchange="renderS1aV24()"><option value="daily">Tổng hợp theo ngày</option><option value="transaction">Theo từng đơn hàng</option></select>
+    <div style="display:flex;gap:8px;margin:12px 0;flex-wrap:wrap;"><button class="btn btn-primary btn-sm" onclick="renderS1aV24()">Xem sổ</button><button class="btn btn-ghost btn-sm" onclick="exportS1aExcelV24()">📥 Xuất Excel</button><button class="btn btn-ghost btn-sm" onclick="printS1aV24()">🖨️ In</button></div>
+    <div id="s1aPrintArea" class="table-scroll"><div id="s1aContent" class="s1a-paper"></div></div>
+  </div>
+</div>
+
+<!-- ============ MODAL: CHỐT SỔ NGÀY ============ -->
+<div class="overlay" id="dailyCloseModal">
+  <div class="sheet" style="max-height:92vh;overflow-y:auto;">
+    <button class="sheet-close" onclick="closeModal('dailyCloseModal')">✕</button>
+    <h3>🔒 Chốt sổ ngày</h3>
+    <div id="dailyClosePreview"><div class="empty-state">Đang tổng hợp giao dịch hôm nay...</div></div>
+    <button class="btn btn-primary" id="confirmDailyCloseBtn" onclick="confirmDailyCloseV24()">🔒 Xác nhận chốt sổ hôm nay</button>
+    <div id="reopenDayWrap" style="display:none;margin-top:12px;"><label>Lý do mở lại sổ *</label><textarea id="reopenDayReason" rows="2" placeholder="VD: Cần bổ sung đơn bán hàng bị sót"></textarea><button class="btn btn-danger" style="margin-top:8px;" onclick="reopenDailyCloseV24()">🔓 Mở lại sổ</button></div>
+    <div class="ledger-rule" style="margin:18px 0;"></div>
+    <div class="section-title" style="margin-top:0;">Lịch sử chốt sổ gần đây</div>
+    <div id="dailyCloseHistory"><div class="empty-state" style="padding:16px;">Chưa tải lịch sử.</div></div>
+  </div>
+</div>
+
 <!-- ============ MODAL: QUÊN MẬT KHẨU ============ -->
 <div class="overlay" id="forgotPasswordModal">
   <div class="sheet">
@@ -1079,6 +1182,19 @@ let stocktakeHistory = [];
 let bulkStockInItems = [];
 let expenses = [];
 let profitSettings = {taxMode:'manual',taxRate1:0,taxRate2:0,taxProfitRate:0,taxManual:0,targetProfit:0,trackingStartDate:''};
+let allHistorySalesV23 = [];
+let allHistoryDebtPaymentsV23 = [];
+let allHistoryExpensesV23 = [];
+let reportHistoryLoadedV23 = false;
+let reportHistoryLoadingV23 = false;
+let selectedReportMonthV23 = monthKeyV22();
+let debtSignatureHasInkV24 = false;
+let debtSignatureBoundV24 = false;
+let pendingDebtSignatureV24 = '';
+let currentDailyClosingV24 = null;
+let dailyCloseUnsubscribeV24 = null;
+let inventoryLedgerLoadingV24 = false;
+let currentS1aRowsV24 = [];
 let storeListenersStarted = false;
 let authInitToken = 0;
 function numberToVietnameseWords(number){
@@ -1135,6 +1251,11 @@ let pendingStoreName = '';
 let currentStoreName = 'Cửa hàng';
 let currentStorePhone = '';
 let currentStoreAddress = '';
+let currentStoreTaxCode = '';
+let currentBankCodeV24 = '';
+let currentBankAccountV24 = '';
+let currentBankNameV24 = '';
+let currentBankNoteV24 = '';
 
 function switchAuthTab(tab){
   document.getElementById('tabLogin').classList.toggle('active', tab==='login');
@@ -1213,6 +1334,11 @@ function openStoreSettings(){
   document.getElementById('settingStoreName').value = currentStoreName;
   document.getElementById('settingStorePhone').value = currentStorePhone;
   document.getElementById('settingStoreAddress').value = currentStoreAddress;
+  document.getElementById('settingTaxCode').value = currentStoreTaxCode;
+  document.getElementById('settingBankCode').value = currentBankCodeV24;
+  document.getElementById('settingBankAccount').value = currentBankAccountV24;
+  document.getElementById('settingBankName').value = currentBankNameV24;
+  document.getElementById('settingBankNote').value = currentBankNoteV24;
   updateMigrationSettingsStatusV21();
   openModal('storeSettingsModal');
 }
@@ -1220,11 +1346,22 @@ function saveStoreSettings(){
   const name = document.getElementById('settingStoreName').value.trim();
   const phone = document.getElementById('settingStorePhone').value.trim();
   const address = document.getElementById('settingStoreAddress').value.trim();
+  const taxCode = document.getElementById('settingTaxCode').value.trim();
+  const bankCode = document.getElementById('settingBankCode').value.trim().toUpperCase();
+  const bankAccount = document.getElementById('settingBankAccount').value.replace(/\s+/g,'').trim();
+  const bankAccountName = document.getElementById('settingBankName').value.trim().toUpperCase();
+  const bankNote = document.getElementById('settingBankNote').value.trim();
   if (!name){ alert('Nhập tên cửa hàng.'); return; }
-  storeRef.set({ storeName:name, phone, address }, { merge:true }).then(() => {
+  if((bankCode||bankAccount||bankAccountName)&&!(bankCode&&bankAccount&&bankAccountName)){alert('Để tạo QR, vui lòng nhập đủ mã ngân hàng, số tài khoản và tên chủ tài khoản.');return;}
+  storeRef.set({ storeName:name, phone, address, taxCode, bankCode, bankAccount, bankAccountName, bankNote }, { merge:true }).then(() => {
     currentStoreName = name;
     currentStorePhone = phone;
     currentStoreAddress = address;
+    currentStoreTaxCode = taxCode;
+    currentBankCodeV24 = bankCode;
+    currentBankAccountV24 = bankAccount;
+    currentBankNameV24 = bankAccountName;
+    currentBankNoteV24 = bankNote;
     document.getElementById('storeGreeting').textContent = 'Xin chào, ' + name;
     closeModal('storeSettingsModal');
   }).catch(e => alert('Lỗi: ' + e.message));
@@ -1273,6 +1410,7 @@ function startStoreListenersV21(){
   listenReportData();
   listenExpensesV22();
   listenProfitSettingsV22();
+  listenTodayClosingV24();
 }
 function hideAllGateScreensV21(){
   document.getElementById('migrationScreen').style.display='none';
@@ -1289,6 +1427,14 @@ async function waitForStoreDocumentV21(maxAttempts=8){
 auth.onAuthStateChanged(async user => {
   const token=++authInitToken;
   storeListenersStarted=false;
+  if(dailyCloseUnsubscribeV24){dailyCloseUnsubscribeV24();dailyCloseUnsubscribeV24=null;}
+  currentDailyClosingV24=null;
+  reportHistoryLoadedV23=false;
+  reportHistoryLoadingV23=false;
+  allHistorySalesV23=[];
+  allHistoryDebtPaymentsV23=[];
+  allHistoryExpensesV23=[];
+  selectedReportMonthV23=monthKeyV22();
   migrationPreviewV21=null;
   migrationStoreDataV21=null;
   if (user){
@@ -1310,6 +1456,11 @@ auth.onAuthStateChanged(async user => {
       currentStoreName=name;
       currentStorePhone=data.phone||'';
       currentStoreAddress=data.address||'';
+      currentStoreTaxCode=data.taxCode||'';
+      currentBankCodeV24=data.bankCode||'';
+      currentBankAccountV24=data.bankAccount||'';
+      currentBankNameV24=data.bankAccountName||'';
+      currentBankNoteV24=data.bankNote||'';
       document.getElementById('storeGreeting').textContent='Xin chào, '+name;
 
       const isPaid=data.paid===true;
@@ -1576,6 +1727,7 @@ function listenProducts(){
   storeRef.collection('products').orderBy('name').onSnapshot(snap => {
     products = snap.docs.map(d => ({ id:d.id, ...d.data() }));
     renderStockList();
+    if(document.getElementById('screen-kho-hang').classList.contains('active'))loadInventoryLedgerV24();
     renderPosProductList();
     renderReports();
     fillPosCustomerSelect(); // no-op safeguard
@@ -1641,6 +1793,7 @@ function listenProfitSettingsV22(){
   storeRef.collection('appSettings').doc('profitV22').onSnapshot(doc=>{
     if(doc.exists) profitSettings={...profitSettings,...doc.data()};
     renderReports();
+    if(reportHistoryLoadedV23) renderMonthlyProfitHistoryV23();
   },e=>console.warn('Không tải được cấu hình lợi nhuận V2.2:',e));
 }
 
@@ -1726,6 +1879,8 @@ function showTab(name){
   document.querySelectorAll('.navbtn').forEach(b => b.classList.remove('on'));
   document.getElementById('nav-' + name).classList.add('on');
   document.getElementById('addProductFab').style.display = (name === 'kho-hang') ? 'flex' : 'none';
+  if(name === 'bao-cao') loadReportHistoryV23();
+  if(name === 'kho-hang') loadInventoryLedgerV24();
 }
 function showDebtSubTab(tab){
   document.getElementById('debtCustomerSection').style.display = tab === 'customer' ? 'block' : 'none';
@@ -1897,7 +2052,7 @@ function handleExcelImport(event){
           name: p.name, category: p.category, unit: p.unit, sku: p.sku,
           cost: p.cost, avgCost:p.cost, price: p.price, stock: p.stock, lowThreshold: 5,
           activeIngredient: p.activeIngredient, expiry: null, supplier: '', altUnits: [],
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(), updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
         writeCount++;
         if(p.stock>0){
@@ -2280,9 +2435,11 @@ function addToCartUnit(productId, encodedUnit){
   const available = availableBaseStock(p);
   const alreadyBase = cart.filter(c=>c.productId===productId).reduce((sum,c)=>sum+c.qty*(Number(c.factor)||1),0);
   if (alreadyBase + u.factor > available){ alert('Không đủ tồn kho có thể bán. Hàng hết hạn không được tính vào tồn bán.'); return; }
-  const existing = cart.find(c => c.productId === productId && c.unit === u.name);
-  if (existing) existing.qty++;
-  else cart.push({ productId, name:p.name, price:Number(u.price)||0, unit:u.name, factor:Number(u.factor)||1, qty:1, cost:(Number(p.cost)||0)*(Number(u.factor)||1) });
+  const existingIndex = cart.findIndex(c => c.productId === productId && c.unit === u.name);
+  if (existingIndex >= 0){
+    const existing=cart[existingIndex]; existing.qty++;
+    cart.splice(existingIndex,1); cart.unshift(existing);
+  } else cart.unshift({ productId, name:p.name, price:Number(u.price)||0, unit:u.name, factor:Number(u.factor)||1, qty:1, cost:(Number(p.cost)||0)*(Number(u.factor)||1) });
   renderCart();
 }
 function changeCartQtyAt(index, delta){
@@ -2339,6 +2496,13 @@ function onPosDebtToggle(){
   wrap.style.display = document.getElementById('posIsDebt').checked ? 'block' : 'none';
   if (!document.getElementById('posIsDebt').checked) document.getElementById('posPaidNow').value = '';
 }
+function vietQrUrlV24(sale){
+  if(!currentBankCodeV24||!currentBankAccountV24)return '';
+  const amount=Math.max(0,Number(sale.isDebt?sale.debtAmount:sale.total)||0);
+  const note=(currentBankNoteV24||'THANH TOAN DON HANG')+(sale.id?' '+String(sale.id).slice(0,8):'');
+  return `https://img.vietqr.io/image/${encodeURIComponent(currentBankCodeV24)}-${encodeURIComponent(currentBankAccountV24)}-compact2.png?amount=${Math.round(amount)}&addInfo=${encodeURIComponent(note)}&accountName=${encodeURIComponent(currentBankNameV24)}`;
+}
+function safeSignatureDataV24(value){return /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(String(value||''))?String(value):'';}
 function renderInvoice(sale){
   const d = sale.createdAt && sale.createdAt.toDate ? sale.createdAt.toDate() : new Date();
   const dateStr = d.toLocaleDateString('vi-VN') + ' ' + d.toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'});
@@ -2350,6 +2514,7 @@ function renderInvoice(sale){
       <td>${money(it.price*it.qty)}</td>
     </tr>
   `).join('');
+  const qrUrl=vietQrUrlV24(sale),signatureData=safeSignatureDataV24(sale.customerSignature);
   document.getElementById('invoiceContent').innerHTML = `
     <div class="inv-store-name">🌾 ${currentStoreName}</div>
     <div class="inv-store-info">
@@ -2369,14 +2534,17 @@ function renderInvoice(sale){
     <div class="inv-row"><span>Còn nợ lại:</span><b style="color:#b5533c;">${money(sale.debtAmount||0)}</b></div>
     <div class="inv-words">Số tiền còn nợ bằng chữ: ${numberToVietnameseWords(sale.debtAmount||0)}</div>
     ` : `<div class="inv-words">Bằng chữ: ${numberToVietnameseWords(sale.total)}</div>`}
+    ${qrUrl?`<div class="inv-divider"></div><div style="text-align:center;font-size:13px;font-weight:700;">Quét QR để chuyển khoản ${money(sale.isDebt?sale.debtAmount:sale.total)}</div><img class="invoice-qr" src="${escapeHtmlV211(qrUrl)}" alt="QR chuyển khoản"><div style="text-align:center;font-size:12px;line-height:1.5;"><b>${escapeHtmlV211(currentBankNameV24)}</b><br>${escapeHtmlV211(currentBankCodeV24)} · ${escapeHtmlV211(currentBankAccountV24)}</div>`:''}
+    ${signatureData?`<div class="inv-divider"></div><div style="font-size:12px;text-align:center;">Chữ ký xác nhận công nợ của khách hàng</div><div style="text-align:center;"><img class="signature-image" src="${signatureData}" alt="Chữ ký khách hàng"></div>`:''}
     <div class="inv-footer">Cảm ơn quý khách đã ủng hộ! 🌾</div>
   `;
   openModal('invoiceModal');
 }
 function printInvoice(){ window.print(); }
-function reprintSale(saleId){ const sale = sales.find(s => s.id === saleId); if (sale) renderInvoice(sale); }
+function findSaleV23(saleId){ return sales.find(s => s.id === saleId) || allHistorySalesV23.find(s => s.id === saleId); }
+function reprintSale(saleId){ const sale = findSaleV23(saleId); if (sale) renderInvoice(sale); }
 function openReturnModal(saleId){
-  const sale = sales.find(s => s.id === saleId);
+  const sale = findSaleV23(saleId);
   if (!sale) return;
   if (!sale.items || !sale.items.length){ alert('Đơn hàng này không có sản phẩm để trả.'); return; }
   document.getElementById('returnSaleId').value = saleId;
@@ -2394,8 +2562,9 @@ function updateReturnPreview(){
   document.getElementById('returnTotalPreview').textContent=money(total);
 }
 function confirmReturn(){
+  if(isTodayClosedV24()){alert('Sổ hôm nay đã chốt. Vui lòng mở lại sổ trước khi trả hàng.');return;}
   const saleId=document.getElementById('returnSaleId').value;
-  const sale=sales.find(s=>s.id===saleId); if(!sale) return;
+  const sale=findSaleV23(saleId); if(!sale) return;
   const returns=[]; let refundTotal=0, invalid=false;
   document.querySelectorAll('.return-qty-input').forEach(inp=>{
     const idx=parseInt(inp.dataset.idx); const qty=parseFloat(inp.value)||0;
@@ -2437,7 +2606,7 @@ function confirmReturn(){
       batch.set(storeRef.collection('debtLedger').doc(),{customerId:sale.customerId,customerName:sale.customerName||'',type:'return',debit:0,credit:deduct,description:'Trả hàng từ phiếu bán',referenceId:saleId,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
     }
   }
-  batch.commit().then(()=>{closeModal('returnModal'); if(!sale.isDebt) alert('Đã cập nhật trả hàng. Nhớ hoàn lại tiền cho khách: '+money(refundTotal));}).catch(e=>alert('Lỗi: '+e.message));
+  batch.commit().then(()=>{reportHistoryLoadedV23=false;closeModal('returnModal'); if(!sale.isDebt) alert('Đã cập nhật trả hàng. Nhớ hoàn lại tiền cho khách: '+money(refundTotal));}).catch(e=>alert('Lỗi: '+e.message));
 }
 function validatePaymentForCart(total){
   const customerId=document.getElementById('posCustomer').value||null;
@@ -2446,7 +2615,27 @@ function validatePaymentForCart(total){
   if(paidNow<0 || paidNow>total){alert('Số tiền khách trả phải từ 0 đến tổng đơn hàng.');return null;}
   return {customerId,isDebt,paidNow,debtAmount:isDebt?total-paidNow:0};
 }
+function clearDebtSignatureV24(){
+  const canvas=document.getElementById('debtSignatureCanvas');if(!canvas)return;
+  const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+  debtSignatureHasInkV24=false;pendingDebtSignatureV24='';
+  const status=document.getElementById('debtSignatureStatus');if(status)status.textContent='Chưa ký (có thể bỏ qua)';
+}
+function initDebtSignatureV24(){
+  const canvas=document.getElementById('debtSignatureCanvas');if(!canvas)return;
+  clearDebtSignatureV24();
+  if(debtSignatureBoundV24)return;
+  debtSignatureBoundV24=true;
+  const ctx=canvas.getContext('2d');ctx.lineWidth=3;ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#1c1c1c';
+  let drawing=false;
+  const point=e=>{const r=canvas.getBoundingClientRect();return {x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height};};
+  canvas.addEventListener('pointerdown',e=>{drawing=true;canvas.setPointerCapture(e.pointerId);const p=point(e);ctx.beginPath();ctx.moveTo(p.x,p.y);e.preventDefault();});
+  canvas.addEventListener('pointermove',e=>{if(!drawing)return;const p=point(e);ctx.lineTo(p.x,p.y);ctx.stroke();debtSignatureHasInkV24=true;document.getElementById('debtSignatureStatus').textContent='✅ Đã có chữ ký';e.preventDefault();});
+  const stop=e=>{if(drawing){drawing=false;ctx.closePath();}if(e)e.preventDefault();};
+  canvas.addEventListener('pointerup',stop);canvas.addEventListener('pointercancel',stop);canvas.addEventListener('pointerleave',stop);
+}
 function openDraftOrder(){
+  if(isTodayClosedV24()){alert('Sổ hôm nay đã chốt. Muốn bán thêm, vào Báo cáo > Chốt sổ ngày và nhập lý do mở lại.');return;}
   if(!cart.length) return;
   const total=cart.reduce((s,c)=>s+c.price*c.qty,0);
   const pay=validatePaymentForCart(total); if(!pay) return;
@@ -2462,10 +2651,21 @@ function openDraftOrder(){
   html+='</div>';
   html+=`<div class="cart-total grand" style="margin-top:10px;"><span>Tổng cộng</span><span class="mono">${money(total)}</span></div>`;
   html+=pay.isDebt?`<div class="card-tight card" style="margin-top:10px;color:var(--rust-500);">Khách trả trước: <b class="mono">${money(pay.paidNow)}</b><br>Còn nợ lại: <b class="mono">${money(pay.debtAmount)}</b></div>`:`<div class="card-tight card" style="margin-top:10px;color:var(--leaf-500);">Khách thanh toán đủ: <b class="mono">${money(total)}</b></div>`;
-  document.getElementById('draftOrderContent').innerHTML=html; openModal('draftOrderModal');
+  document.getElementById('draftOrderContent').innerHTML=html;
+  const signatureWrap=document.getElementById('debtSignatureWrap');signatureWrap.style.display=pay.isDebt&&pay.debtAmount>0?'block':'none';
+  openModal('draftOrderModal');
+  if(pay.isDebt&&pay.debtAmount>0)initDebtSignatureV24();else pendingDebtSignatureV24='';
 }
-function confirmDraftOrder(){ closeModal('draftOrderModal'); checkout(); }
+function confirmDraftOrder(){
+  const total=cart.reduce((s,c)=>s+c.price*c.qty,0),pay=validatePaymentForCart(total);if(!pay)return;
+  if(pay.isDebt&&pay.debtAmount>0){
+    if(!debtSignatureHasInkV24&&!confirm('Khách chưa ký xác nhận nợ. Bạn vẫn muốn lưu đơn nợ này?'))return;
+    pendingDebtSignatureV24=debtSignatureHasInkV24?document.getElementById('debtSignatureCanvas').toDataURL('image/jpeg',0.62):'';
+  }else pendingDebtSignatureV24='';
+  closeModal('draftOrderModal');checkout();
+}
 function checkout(){
+  if(isTodayClosedV24()){alert('Sổ hôm nay đã chốt, không thể thêm đơn mới.');return;}
   if(!cart.length) return;
   const total=cart.reduce((s,c)=>s+c.price*c.qty,0);
   const pay=validatePaymentForCart(total); if(!pay) return;
@@ -2482,7 +2682,7 @@ function checkout(){
   }
   const saleItems=cart.map((c,i)=>({productId:c.productId,name:c.name,price:c.price,qty:c.qty,unit:c.unit,unitFactor:Number(c.factor)||1,baseQty:c.qty*(Number(c.factor)||1),cost:c.cost||0,lotAllocations:lotPlans[i].allocations,legacyQty:0}));
   const batch=db.batch(); const saleRef=storeRef.collection('sales').doc();
-  batch.set(saleRef,{items:saleItems,total,paidAmount:pay.paidNow,debtAmount:pay.debtAmount,customerId:pay.customerId||null,customerName:customer?customer.name:'Khách lẻ',isDebt:!!pay.isDebt,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+  batch.set(saleRef,{items:saleItems,total,paidAmount:pay.paidNow,debtAmount:pay.debtAmount,customerId:pay.customerId||null,customerName:customer?customer.name:'Khách lẻ',isDebt:!!pay.isDebt,customerSignature:pendingDebtSignatureV24||'',hasCustomerSignature:!!pendingDebtSignatureV24,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
   const lotTotals={};
   saleItems.forEach(it=>{
     batch.update(storeRef.collection('products').doc(it.productId),{stock:firebase.firestore.FieldValue.increment(-it.baseQty)});
@@ -2493,11 +2693,13 @@ function checkout(){
     const cRef=storeRef.collection('customers').doc(pay.customerId); const custUpdate={debt:firebase.firestore.FieldValue.increment(pay.debtAmount)};
     if(!customer || Number(customer.debt||0)<=0) custUpdate.debtSince=firebase.firestore.FieldValue.serverTimestamp();
     batch.update(cRef,custUpdate);
-    batch.set(storeRef.collection('debtLedger').doc(),{customerId:pay.customerId,customerName:customer?customer.name:'',type:'sale',debit:pay.debtAmount,credit:0,description:'Mua hàng ghi nợ',referenceId:saleRef.id,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    batch.set(storeRef.collection('debtLedger').doc(),{customerId:pay.customerId,customerName:customer?customer.name:'',type:'sale',debit:pay.debtAmount,credit:0,description:'Mua hàng ghi nợ',referenceId:saleRef.id,customerSignature:pendingDebtSignatureV24||'',hasCustomerSignature:!!pendingDebtSignatureV24,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
   }
   const cartSnapshot=saleItems.map(x=>({...x}));
   batch.commit().then(()=>{
-    renderInvoice({items:cartSnapshot,total,paidAmount:pay.paidNow,debtAmount:pay.debtAmount,customerName:customer?customer.name:'Khách lẻ',isDebt:!!pay.isDebt,createdAt:{toDate:()=>new Date()}});
+    reportHistoryLoadedV23=false;
+    renderInvoice({id:saleRef.id,items:cartSnapshot,total,paidAmount:pay.paidNow,debtAmount:pay.debtAmount,customerName:customer?customer.name:'Khách lẻ',isDebt:!!pay.isDebt,customerSignature:pendingDebtSignatureV24||'',createdAt:{toDate:()=>new Date()}});
+    pendingDebtSignatureV24='';debtSignatureHasInkV24=false;
     cart=[]; document.getElementById('posCustomer').value=''; document.getElementById('posIsDebt').checked=false; document.getElementById('posDebtOption').style.display='none'; document.getElementById('posPartialPayWrap').style.display='none'; document.getElementById('posPaidNow').value=''; renderCart();
   }).catch(e=>alert('Lỗi lưu hoá đơn: '+e.message));
 }
@@ -2566,6 +2768,7 @@ function openAddCustomerDebt(customerId){
   openModal('addCustomerDebtModal');
 }
 function confirmAddCustomerDebt(){
+  if(isTodayClosedV24()){alert('Sổ hôm nay đã chốt. Vui lòng mở lại sổ trước khi ghi thêm công nợ.');return;}
   const id = document.getElementById('addCustDebtId').value;
   const amount = parseFloat(document.getElementById('addCustDebtAmount').value) || 0;
   if (amount <= 0){ alert('Số tiền ghi nợ phải lớn hơn 0.'); return; }
@@ -2720,6 +2923,7 @@ function openPayDebt(customerId){
   openModal('payDebtModal');
 }
 function confirmPayDebt(){
+  if(isTodayClosedV24()){alert('Sổ hôm nay đã chốt. Vui lòng mở lại sổ trước khi thu nợ.');return;}
   const id = document.getElementById('payDebtCustomerId').value;
   const amount = parseFloat(document.getElementById('payDebtAmount').value) || 0;
   const customer = customers.find(c => c.id === id);
@@ -2733,6 +2937,7 @@ function confirmPayDebt(){
   batch.set(storeRef.collection('debtPayments').doc(),{customerId:id,customerName:customer?customer.name:'',amount,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
   batch.set(storeRef.collection('debtLedger').doc(),{customerId:id,customerName:customer?customer.name:'',type:'payment',debit:0,credit:amount,description:'Thu nợ khách hàng',createdAt:firebase.firestore.FieldValue.serverTimestamp()});
   batch.commit().then(() => {
+    reportHistoryLoadedV23=false;
     closeModal('payDebtModal');
     document.getElementById('invoiceContent').innerHTML = `
       <div class="inv-store-name">🌾 ${currentStoreName}</div>
@@ -2768,11 +2973,17 @@ function openDebtLedger(kind,id){
     const htmlRows=rows.map(r=>{
       running += Number(r.debit||0)-Number(r.credit||0);
       const dt=r.createdAt&&r.createdAt.toDate?r.createdAt.toDate():null;
-      return `<div class="prod-item" style="align-items:flex-start;"><div style="flex:1;"><div class="prod-name">${r.description||r.type||'Giao dịch công nợ'}</div><div class="prod-meta">${dt?dt.toLocaleDateString('vi-VN')+' '+dt.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}):'—'}</div></div><div style="text-align:right;"><div style="color:var(--rust-500);">${Number(r.debit||0)>0?'+ '+money(r.debit):''}</div><div style="color:var(--leaf-500);">${Number(r.credit||0)>0?'- '+money(r.credit):''}</div><div class="prod-meta">Dư sổ: ${money(Math.max(0,running))}</div></div></div>`;
+      const signature=safeSignatureDataV24(r.customerSignature);
+      return `<div class="prod-item" style="align-items:flex-start;"><div style="flex:1;min-width:0;"><div class="prod-name">${escapeHtmlV211(r.description||r.type||'Giao dịch công nợ')}</div><div class="prod-meta">${dt?dt.toLocaleDateString('vi-VN')+' '+dt.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}):'—'}</div>${signature?`<img class="signature-image" src="${signature}" alt="Chữ ký xác nhận">`:''}${isCustomer&&r.type==='sale'&&r.referenceId?`<div><button class="btn btn-sm btn-ghost" style="margin-top:6px;width:auto;" onclick="openDebtSaleV24('${r.referenceId}')">🧾 Xem đơn nợ</button></div>`:''}</div><div style="text-align:right;"><div style="color:var(--rust-500);">${Number(r.debit||0)>0?'+ '+money(r.debit):''}</div><div style="color:var(--leaf-500);">${Number(r.credit||0)>0?'- '+money(r.credit):''}</div><div class="prod-meta">Dư sổ: ${money(Math.max(0,running))}</div></div></div>`;
     }).join('');
     const current=Number(entity.debt||0);
     box.innerHTML=`<div class="card-tight card">Dư công nợ hiện tại: <b class="mono" style="color:var(--rust-500);">${money(current)}</b></div>${rows.length?'<div class="card">'+htmlRows+'</div>':'<div class="empty-state">Chưa có bút toán chi tiết. Nếu đây là nợ cũ trước khi nâng cấp, số dư hiện tại vẫn được giữ nguyên.</div>'}${rows.length && Math.abs(running-current)>1?'<div class="card-tight card" style="color:var(--wheat-400);">⚠️ Sổ chi tiết mới ghi các giao dịch phát sinh sau khi nâng cấp. Chênh lệch '+money(current-running)+' có thể là số dư nợ cũ.</div>':''}`;
   }).catch(e=>{box.innerHTML='<div class="empty-state">Không tải được sổ nợ.</div>';alert('Lỗi: '+e.message);});
+}
+async function openDebtSaleV24(saleId){
+  let sale=findSaleV23(saleId);
+  if(!sale){try{const doc=await storeRef.collection('sales').doc(saleId).get();if(doc.exists)sale={id:doc.id,...doc.data()};}catch(e){alert('Không tải được đơn nợ: '+e.message);return;}}
+  if(sale)renderInvoice(sale);else alert('Không tìm thấy đơn hàng gốc.');
 }
 // ---------- NHÀ CUNG CẤP ----------
 function renderSupplierList(){
@@ -3038,6 +3249,94 @@ function openStocktakeDetail(id){
   openModal('stocktakeDetailModal');
 }
 
+// ---------- V2.4: SỔ KHO TỔNG HỢP ----------
+function localDateKeyV24(date=new Date()){return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');}
+function monthBoundsV24(key){const [y,m]=String(key).split('-').map(Number);return {start:new Date(y,m-1,1),end:new Date(y,m,1)};}
+async function loadInventoryLedgerV24(){
+  const input=document.getElementById('inventoryLedgerMonth'),box=document.getElementById('inventoryLedgerBox');if(!input||!box||!storeRef||inventoryLedgerLoadingV24)return;
+  input.max=monthKeyV22();if(!input.value||input.value>input.max)input.value=input.max;
+  inventoryLedgerLoadingV24=true;box.innerHTML='<div class="empty-state" style="padding:18px;">Đang tổng hợp tồn đầu, nhập, bán và tồn cuối...</div>';
+  try{
+    const {start,end}=monthBoundsV24(input.value);
+    const [saleSnap,logSnap]=await Promise.all([storeRef.collection('sales').where('createdAt','>=',start).get(),storeRef.collection('stockLogs').where('createdAt','>=',start).get()]);
+    const saleRows=saleSnap.docs.map(d=>({id:d.id,...d.data()})),logRows=logSnap.docs.map(d=>({id:d.id,...d.data()}));
+    const stats={};products.forEach(p=>stats[p.id]={p,opening:0,purchase:0,adjust:0,sold:0,closing:0,afterNet:0});
+    saleRows.forEach(s=>{const d=dateFromValueV23(s.createdAt);if(!d)return;(s.items||[]).forEach(it=>{const x=stats[it.productId];if(!x)return;const qty=Number(it.baseQty)||Number(it.qty)||0;if(d<end)x.sold+=qty;else x.afterNet-=qty;});});
+    logRows.forEach(l=>{const d=dateFromValueV23(l.createdAt),x=stats[l.productId];if(!d||!x)return;const qty=Number(l.qty)||0;if(d<end){if(l.type==='purchase')x.purchase+=qty;else if(l.type==='stocktake')x.adjust+=qty;}else{x.afterNet+=qty;}});
+    Object.values(stats).forEach(x=>{x.closing=Number(x.p.stock||0)-x.afterNet;x.opening=x.closing-x.purchase-x.adjust+x.sold;});
+    const rows=Object.values(stats).sort((a,b)=>(a.p.name||'').localeCompare(b.p.name||'','vi'));
+    const totals=rows.reduce((a,x)=>{a.opening+=x.opening;a.purchase+=x.purchase;a.adjust+=x.adjust;a.sold+=x.sold;a.closing+=x.closing;return a;},{opening:0,purchase:0,adjust:0,sold:0,closing:0});
+    box.innerHTML=`<div class="table-scroll"><table class="ledger-table"><thead><tr><th>Sản phẩm</th><th>Tồn đầu</th><th>Nhập</th><th>Điều chỉnh</th><th>Đã bán</th><th>Tồn cuối</th></tr></thead><tbody>${rows.map(x=>`<tr><td onclick="openStockIn('${x.p.id}')" style="cursor:pointer;"><b>${escapeHtmlV211(x.p.name)}</b><div class="prod-meta">${escapeHtmlV211(x.p.unit||'')} · chạm để nhập hàng</div></td><td>${x.opening.toLocaleString('vi-VN')}</td><td>${x.purchase.toLocaleString('vi-VN')}</td><td>${x.adjust>0?'+':''}${x.adjust.toLocaleString('vi-VN')}</td><td>${x.sold.toLocaleString('vi-VN')}</td><td><b>${x.closing.toLocaleString('vi-VN')}</b></td></tr>`).join('')}<tr><td><b>TỔNG SỐ LƯỢNG</b></td><td><b>${totals.opening.toLocaleString('vi-VN')}</b></td><td><b>${totals.purchase.toLocaleString('vi-VN')}</b></td><td><b>${totals.adjust.toLocaleString('vi-VN')}</b></td><td><b>${totals.sold.toLocaleString('vi-VN')}</b></td><td><b>${totals.closing.toLocaleString('vi-VN')}</b></td></tr></tbody></table></div><div class="prod-meta" style="margin-top:7px;line-height:1.5;">Số liệu cũ được dựng lại từ hóa đơn và nhật ký kho. Các giao dịch mới tiếp tục được cập nhật tự động.</div>`;
+  }catch(e){box.innerHTML='<div class="card-tight card" style="color:var(--rust-500);">Không tải được sổ kho: '+escapeHtmlV211(e.message||String(e))+'</div>';}
+  finally{inventoryLedgerLoadingV24=false;}
+}
+
+// ---------- V2.4: SỔ S1a-HKD ----------
+async function openS1aReportV24(){
+  openModal('s1aModal');
+  const now=new Date(),from=new Date(now.getFullYear(),now.getMonth(),1),to=new Date(now.getFullYear(),now.getMonth()+1,0);
+  document.getElementById('s1aFrom').value=localDateKeyV24(from);document.getElementById('s1aTo').value=localDateKeyV24(to);
+  if(!reportHistoryLoadedV23)await loadReportHistoryV23();renderS1aV24();
+}
+function s1aRowsV24(){
+  const from=document.getElementById('s1aFrom').value,to=document.getElementById('s1aTo').value,mode=document.getElementById('s1aMode').value;
+  if(!from||!to||from>to)return [];
+  const filtered=allHistorySalesV23.filter(s=>{const d=dateFromValueV23(s.createdAt),k=d?localDateKeyV24(d):'';return k>=from&&k<=to;});
+  if(mode==='transaction')return filtered.slice().sort((a,b)=>(dateFromValueV23(a.createdAt)?.getTime()||0)-(dateFromValueV23(b.createdAt)?.getTime()||0)).map(s=>{const d=dateFromValueV23(s.createdAt);return {date:d?d.toLocaleDateString('vi-VN'):'—',description:'Đơn '+String(s.id||'').slice(0,8)+' · '+(s.customerName||'Khách lẻ'),amount:Number(s.total||0)};});
+  const daily={};filtered.forEach(s=>{const d=dateFromValueV23(s.createdAt);if(!d)return;const k=localDateKeyV24(d);daily[k]=(daily[k]||0)+Number(s.total||0);});
+  return Object.keys(daily).sort().map(k=>{const [y,m,d]=k.split('-');return {date:`${d}/${m}/${y}`,description:'Doanh thu bán hàng hóa, dịch vụ trong ngày',amount:daily[k]};});
+}
+function renderS1aV24(){
+  const box=document.getElementById('s1aContent');if(!box)return;
+  const from=document.getElementById('s1aFrom').value,to=document.getElementById('s1aTo').value;if(!from||!to||from>to){box.innerHTML='<div style="color:#b42318;">Khoảng ngày không hợp lệ.</div>';currentS1aRowsV24=[];return;}
+  const rows=s1aRowsV24(),total=rows.reduce((s,r)=>s+r.amount,0);currentS1aRowsV24=rows;
+  box.innerHTML=`<div style="text-align:center;font-weight:700;font-size:18px;">SỔ DOANH THU BÁN HÀNG HÓA, DỊCH VỤ</div><div style="text-align:center;margin-top:4px;">Mẫu số S1a-HKD · Từ ${from.split('-').reverse().join('/')} đến ${to.split('-').reverse().join('/')}</div><div style="margin-top:12px;line-height:1.6;"><b>Hộ/cá nhân kinh doanh:</b> ${escapeHtmlV211(currentStoreName)}<br><b>Mã số thuế/CCCD:</b> ${escapeHtmlV211(currentStoreTaxCode||'—')}<br><b>Địa chỉ:</b> ${escapeHtmlV211(currentStoreAddress||'—')}</div><table><thead><tr><th style="width:130px;">Ngày, tháng ghi sổ<br>(A)</th><th>Diễn giải<br>(B)</th><th style="width:180px;">Số tiền bán hàng hóa, dịch vụ<br>(1)</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${escapeHtmlV211(r.date)}</td><td>${escapeHtmlV211(r.description)}</td><td style="text-align:right;">${Math.round(r.amount).toLocaleString('vi-VN')}</td></tr>`).join('')||'<tr><td colspan="3" style="text-align:center;">Không có doanh thu trong kỳ</td></tr>'}<tr><td colspan="2" style="text-align:right;"><b>CỘNG</b></td><td style="text-align:right;"><b>${Math.round(total).toLocaleString('vi-VN')}</b></td></tr></tbody></table><div style="font-size:11px;margin-top:10px;font-style:italic;">Sổ được tổng hợp từ các đơn hàng đã lưu trong Sổ Nhà Nông. Cần đối chiếu hóa đơn/chứng từ trước khi sử dụng cho hồ sơ thuế.</div>`;
+}
+function exportS1aExcelV24(){
+  renderS1aV24();const from=document.getElementById('s1aFrom').value,to=document.getElementById('s1aTo').value,total=currentS1aRowsV24.reduce((s,r)=>s+r.amount,0);
+  const aoa=[['SỔ DOANH THU BÁN HÀNG HÓA, DỊCH VỤ (S1a-HKD)'],['Hộ/cá nhân kinh doanh',currentStoreName],['Mã số thuế/CCCD',currentStoreTaxCode],['Địa chỉ',currentStoreAddress],['Kỳ',from+' đến '+to],[],['Ngày, tháng ghi sổ (A)','Diễn giải (B)','Số tiền bán hàng hóa, dịch vụ (1)'],...currentS1aRowsV24.map(r=>[r.date,r.description,r.amount]),['','CỘNG',total]];
+  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:20},{wch:55},{wch:24}];const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'S1a-HKD');XLSX.writeFile(wb,`So-S1a-HKD_${from}_${to}.xlsx`);
+}
+function printS1aV24(){renderS1aV24();document.body.classList.add('print-s1a');window.print();setTimeout(()=>document.body.classList.remove('print-s1a'),500);}
+
+// ---------- V2.4: CHỐT SỔ NGÀY ----------
+function isTodayClosedV24(){return !!(currentDailyClosingV24&&currentDailyClosingV24.status==='closed');}
+function listenTodayClosingV24(){
+  if(dailyCloseUnsubscribeV24)dailyCloseUnsubscribeV24();
+  const key=localDateKeyV24();dailyCloseUnsubscribeV24=storeRef.collection('dailyClosings').doc(key).onSnapshot(doc=>{currentDailyClosingV24=doc.exists?{id:doc.id,...doc.data()}:null;renderDailyCloseStatusV24();},e=>console.warn('Không tải được trạng thái chốt ngày:',e));
+}
+function renderDailyCloseStatusV24(){
+  const box=document.getElementById('dailyCloseStatus'),btn=document.getElementById('dailyCloseButton');if(!box||!btn)return;
+  if(isTodayClosedV24()){const d=dateFromValueV23(currentDailyClosingV24.closedAt);box.innerHTML=`🔒 <b>Sổ ngày ${localDateKeyV24().split('-').reverse().join('/')} đã chốt</b>${d?' lúc '+d.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}):''}. Muốn phát sinh thêm giao dịch phải mở lại và ghi lý do.`;btn.textContent='🔒 Xem sổ đã chốt';btn.className='btn btn-ghost';}
+  else{box.innerHTML='🔓 Sổ hôm nay đang mở. Chủ cửa hàng có thể bán hàng và ghi nhận giao dịch bình thường.';btn.textContent='🔒 Chốt sổ ngày';btn.className='btn btn-leaf';}
+}
+async function daySummaryV24(key=localDateKeyV24()){
+  const [y,m,d]=key.split('-').map(Number),start=new Date(y,m-1,d),end=new Date(y,m-1,d+1);
+  const [saleSnap,paySnap,expenseSnap]=await Promise.all([storeRef.collection('sales').where('createdAt','>=',start).where('createdAt','<',end).get(),storeRef.collection('debtPayments').where('createdAt','>=',start).where('createdAt','<',end).get(),storeRef.collection('expenses').where('expenseDate','==',key).get()]);
+  const saleRows=saleSnap.docs.map(x=>x.data()),payRows=paySnap.docs.map(x=>x.data()),expenseRows=expenseSnap.docs.map(x=>x.data());
+  const revenue=saleRows.reduce((s,x)=>s+Number(x.total||0),0),collectedAtSale=saleRows.reduce((s,x)=>s+(x.isDebt?Number(x.paidAmount||0):Number(x.total||0)),0),newDebt=saleRows.reduce((s,x)=>s+Number(x.debtAmount||0),0),debtCollected=payRows.reduce((s,x)=>s+Number(x.amount||0),0),grossProfit=saleRows.reduce((s,x)=>s+saleGrossProfitV23(x),0),expenseTotal=expenseRows.reduce((s,x)=>s+Number(x.amount||0),0);
+  return {dateKey:key,saleCount:saleRows.length,revenue,collectedAtSale,newDebt,debtCollected,grossProfit,expenseTotal,netCash:collectedAtSale+debtCollected-expenseTotal};
+}
+function dailyCloseSummaryHtmlV24(s){return `<div class="stat-row" style="margin-bottom:10px;"><div class="stat wheat"><div class="label">Số đơn</div><div class="value">${s.saleCount||0}</div></div><div class="stat leaf"><div class="label">Doanh thu</div><div class="value mono">${money(s.revenue||0)}</div></div></div><div class="card-tight card" style="line-height:1.8;">Thu tại lúc bán: <b class="mono" style="float:right;">${money(s.collectedAtSale||0)}</b><br>Phát sinh nợ mới: <b class="mono" style="float:right;">${money(s.newDebt||0)}</b><br>Thu nợ trong ngày: <b class="mono" style="float:right;">${money(s.debtCollected||0)}</b><br>Chi phí trong ngày: <b class="mono" style="float:right;">${money(s.expenseTotal||0)}</b><br>Lãi gộp: <b class="mono" style="float:right;">${money(s.grossProfit||0)}</b><br><span style="color:var(--wheat-400);">Dòng tiền thuần:</span> <b class="mono" style="float:right;color:var(--wheat-400);">${money(s.netCash||0)}</b></div>`;}
+async function openDailyCloseV24(){
+  openModal('dailyCloseModal');const box=document.getElementById('dailyClosePreview'),confirmBtn=document.getElementById('confirmDailyCloseBtn'),reopen=document.getElementById('reopenDayWrap');
+  try{const summary=isTodayClosedV24()?currentDailyClosingV24:await daySummaryV24();box.innerHTML=dailyCloseSummaryHtmlV24(summary);confirmBtn.style.display=isTodayClosedV24()?'none':'flex';reopen.style.display=isTodayClosedV24()?'block':'none';await loadDailyCloseHistoryV24();}catch(e){box.innerHTML='<div class="card-tight card" style="color:var(--rust-500);">Không tổng hợp được: '+escapeHtmlV211(e.message||String(e))+'</div>';}
+}
+async function confirmDailyCloseV24(){
+  if(isTodayClosedV24()){alert('Sổ hôm nay đã được chốt.');return;}if(!confirm('Sau khi chốt, không thể thêm đơn bán, thu nợ hoặc chi phí cho hôm nay nếu chưa mở lại. Xác nhận chốt sổ?'))return;
+  const btn=document.getElementById('confirmDailyCloseBtn');btn.disabled=true;btn.textContent='Đang chốt sổ...';
+  try{const summary=await daySummaryV24();await storeRef.collection('dailyClosings').doc(summary.dateKey).set({...summary,status:'closed',closedAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp(),closeCount:firebase.firestore.FieldValue.increment(1)},{merge:true});alert('Đã chốt sổ ngày '+summary.dateKey.split('-').reverse().join('/')+'.');closeModal('dailyCloseModal');}
+  catch(e){alert('Không chốt được sổ: '+e.message);}finally{btn.disabled=false;btn.textContent='🔒 Xác nhận chốt sổ hôm nay';}
+}
+async function reopenDailyCloseV24(){
+  if(!isTodayClosedV24())return;const reason=document.getElementById('reopenDayReason').value.trim();if(!reason){alert('Vui lòng nhập lý do mở lại sổ.');return;}if(!confirm('Mở lại sổ hôm nay để tiếp tục phát sinh giao dịch?'))return;
+  try{await storeRef.collection('dailyClosings').doc(localDateKeyV24()).set({status:'reopened',reopenReason:reason,reopenedAt:firebase.firestore.FieldValue.serverTimestamp(),reopenCount:firebase.firestore.FieldValue.increment(1),updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});document.getElementById('reopenDayReason').value='';closeModal('dailyCloseModal');alert('Đã mở lại sổ hôm nay. Lý do đã được lưu.');}catch(e){alert('Không mở lại được sổ: '+e.message);}
+}
+async function loadDailyCloseHistoryV24(){
+  const box=document.getElementById('dailyCloseHistory');try{const snap=await storeRef.collection('dailyClosings').orderBy('dateKey','desc').limit(30).get(),rows=snap.docs.map(d=>({id:d.id,...d.data()}));box.innerHTML=rows.length?`<div class="card">${rows.map(x=>`<div class="prod-item"><div style="flex:1;"><div class="prod-name">${String(x.dateKey||x.id).split('-').reverse().join('/')}</div><div class="prod-meta">${x.status==='closed'?'🔒 Đã chốt':'🔓 Đã mở lại'} · ${Number(x.saleCount||0)} đơn${x.reopenReason?' · '+escapeHtmlV211(x.reopenReason):''}</div></div><div class="mono">${money(x.revenue||0)}</div></div>`).join('')}</div>`:'<div class="empty-state" style="padding:16px;">Chưa có ngày nào được chốt.</div>';}
+  catch(e){box.innerHTML='<div class="prod-meta">Không tải được lịch sử chốt sổ.</div>';}
+}
+
 // ---------- BÁO CÁO ----------
 function renderStockAlerts(){
   const box = document.getElementById('stockAlertBox');
@@ -3081,12 +3380,13 @@ function renderExpenseListV22(){
   box.innerHTML=expenses.length?expenses.map(x=>`<div class="prod-item"><div style="flex:1;"><div class="prod-name">${escapeHtmlV211(x.category||'Chi phí')}</div><div class="prod-meta">${escapeHtmlV211(x.expenseDate||'')} · ${x.type==='variable'?'Biến đổi':'Cố định'}${x.note?' · '+escapeHtmlV211(x.note):''}</div></div><div style="text-align:right;"><div class="mono">${money(x.amount||0)}</div><button class="btn btn-sm btn-ghost" style="width:auto;margin-top:4px;" onclick="deleteExpenseV22('${x.id}')">Xóa</button></div></div>`).join(''):'<div class="empty-state">Chưa có chi phí trong tháng này.</div>';
 }
 function saveExpense(){
+  if(isTodayClosedV24()){alert('Sổ hôm nay đã chốt. Vui lòng mở lại sổ trước khi ghi chi phí.');return;}
   const date=document.getElementById('expenseDate').value,type=document.getElementById('expenseType').value,category=document.getElementById('expenseCategory').value,amount=parseFloat(document.getElementById('expenseAmount').value)||0,note=document.getElementById('expenseNote').value.trim();
   if(!date){alert('Vui lòng chọn ngày chi.');return;} if(amount<=0){alert('Số tiền chi phí phải lớn hơn 0.');return;}
   const btn=document.getElementById('expenseSaveBtn');btn.disabled=true;btn.textContent='Đang lưu...';
-  storeRef.collection('expenses').add({expenseDate:date,monthKey:date.slice(0,7),type,category,amount,note,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).then(()=>{document.getElementById('expenseAmount').value='';document.getElementById('expenseNote').value='';alert('Đã ghi nhận chi phí '+money(amount)+'.');}).catch(e=>alert('Lỗi lưu chi phí: '+e.message)).finally(()=>{btn.disabled=false;btn.textContent='+ Ghi nhận chi phí';});
+  storeRef.collection('expenses').add({expenseDate:date,monthKey:date.slice(0,7),type,category,amount,note,createdAt:firebase.firestore.FieldValue.serverTimestamp()}).then(()=>{reportHistoryLoadedV23=false;document.getElementById('expenseAmount').value='';document.getElementById('expenseNote').value='';alert('Đã ghi nhận chi phí '+money(amount)+'.');}).catch(e=>alert('Lỗi lưu chi phí: '+e.message)).finally(()=>{btn.disabled=false;btn.textContent='+ Ghi nhận chi phí';});
 }
-function deleteExpenseV22(id){if(!confirm('Xóa khoản chi phí này?'))return;storeRef.collection('expenses').doc(id).delete().catch(e=>alert('Không xóa được: '+e.message));}
+function deleteExpenseV22(id){if(!confirm('Xóa khoản chi phí này?'))return;storeRef.collection('expenses').doc(id).delete().then(()=>{reportHistoryLoadedV23=false;}).catch(e=>alert('Không xóa được: '+e.message));}
 function toggleProfitTaxFields(){
   const m=document.getElementById('profitTaxMode').value;document.getElementById('profitTaxRevenueFields').style.display=m==='revenue'?'block':'none';document.getElementById('profitTaxProfitFields').style.display=m==='profit'?'block':'none';document.getElementById('profitTaxManualFields').style.display=m==='manual'?'block':'none';
 }
@@ -3098,8 +3398,8 @@ function saveProfitSettings(){
   const data={trackingStartDate:document.getElementById('profitTrackingStart').value||'',taxMode:document.getElementById('profitTaxMode').value,taxRate1:Math.max(0,parseFloat(document.getElementById('profitTaxRate1').value)||0),taxRate2:Math.max(0,parseFloat(document.getElementById('profitTaxRate2').value)||0),taxProfitRate:Math.max(0,parseFloat(document.getElementById('profitTaxProfitRate').value)||0),taxManual:Math.max(0,parseFloat(document.getElementById('profitTaxManual').value)||0),targetProfit:Math.max(0,parseFloat(document.getElementById('profitTargetInput').value)||0),updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
   const btn=document.getElementById('profitSettingsSaveBtn');btn.disabled=true;btn.textContent='Đang lưu...';storeRef.collection('appSettings').doc('profitV22').set(data,{merge:true}).then(()=>{closeModal('profitSettingsModal');alert('Đã lưu cấu hình lợi nhuận V2.2.');}).catch(e=>alert('Lỗi: '+e.message)).finally(()=>{btn.disabled=false;btn.textContent='Lưu cài đặt';});
 }
-function profitMetricsV22(monthRev,monthGrossProfit){
-  const fixed=expenses.filter(x=>x.type==='fixed').reduce((s,x)=>s+Number(x.amount||0),0),variable=expenses.filter(x=>x.type==='variable').reduce((s,x)=>s+Number(x.amount||0),0),totalExpenses=fixed+variable;
+function profitMetricsV22(monthRev,monthGrossProfit,expenseRows=expenses){
+  const fixed=expenseRows.filter(x=>x.type==='fixed').reduce((s,x)=>s+Number(x.amount||0),0),variable=expenseRows.filter(x=>x.type==='variable').reduce((s,x)=>s+Number(x.amount||0),0),totalExpenses=fixed+variable;
   const netRevenue=Number(monthRev)||0,grossProfit=Number(monthGrossProfit)||0,cogs=netRevenue-grossProfit,grossMargin=netRevenue>0?grossProfit/netRevenue:0,pretax=grossProfit-totalExpenses,pretaxMargin=netRevenue>0?pretax/netRevenue:0;
   const mode=profitSettings.taxMode||'manual',r1=Number(profitSettings.taxRate1||0)/100,r2=Number(profitSettings.taxRate2||0)/100,profitRate=Number(profitSettings.taxProfitRate||0)/100,manualTax=Number(profitSettings.taxManual||0),target=Number(profitSettings.targetProfit||0);
   let tax=0;if(mode==='revenue')tax=netRevenue*(r1+r2);else if(mode==='profit')tax=Math.max(0,pretax)*profitRate;else tax=manualTax;
@@ -3111,18 +3411,110 @@ function profitMetricsV22(monthRev,monthGrossProfit){
   const safety=isFinite(breakEven)?netRevenue-breakEven:0,safetyPct=netRevenue>0?safety/netRevenue:0,progress=isFinite(breakEven)&&breakEven>0?netRevenue/breakEven*100:0;
   return {fixed,variable,totalExpenses,netRevenue,cogs,grossProfit,grossMargin,pretax,pretaxMargin,tax,afterTax,netMargin,cmr,breakEven,target,targetRevenue,safety,safetyPct,progress};
 }
-function renderProfitAnalysisV22(monthRev,monthGrossProfit){
-  const m=profitMetricsV22(monthRev,monthGrossProfit),pct=v=>(isFinite(v)?v:0).toLocaleString('vi-VN',{maximumFractionDigits:2})+'%';
+function renderProfitAnalysisV22(monthRev,monthGrossProfit,expenseRows=expenses,reportMonthKey=monthKeyV22()){
+  const m=profitMetricsV22(monthRev,monthGrossProfit,expenseRows),pct=v=>(isFinite(v)?v:0).toLocaleString('vi-VN',{maximumFractionDigits:2})+'%';
   const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
   set('statMonthCogs',money(m.cogs));set('statOperatingExpenses',money(m.totalExpenses));set('statGrossMargin',pct(m.grossMargin*100));set('statPretaxProfit',money(m.pretax));set('statEstimatedTax',money(m.tax));set('statAfterTaxProfit',money(m.afterTax));set('statNetMargin',pct(m.netMargin*100));set('statContributionMargin',pct(m.cmr*100));set('statBreakEvenRevenue',isFinite(m.breakEven)?money(m.breakEven):'Chưa tính được');set('statSafetyMargin',isFinite(m.breakEven)?money(m.safety):'—');set('statSafetyMarginPct',isFinite(m.breakEven)?pct(m.safetyPct*100):'—');set('statBreakEvenProgressText',isFinite(m.breakEven)?pct(m.progress):'—');set('statProfitTarget',money(m.target));set('statTargetRevenue',isFinite(m.targetRevenue)?money(m.targetRevenue):'Chưa tính được');
   const bar=document.getElementById('statBreakEvenProgress');if(bar)bar.style.width=Math.max(0,Math.min(100,m.progress))+'%';
-  const complete=document.getElementById('profitCompletenessBox');if(complete){const hasExpense=expenses.length>0,hasSettings=!!profitSettings.trackingStartDate||Number(profitSettings.taxRate1||0)>0||Number(profitSettings.taxRate2||0)>0||Number(profitSettings.taxProfitRate||0)>0||Number(profitSettings.taxManual||0)>0;const now=new Date(),monthStart=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-01',partial=profitSettings.trackingStartDate&&profitSettings.trackingStartDate>monthStart;complete.innerHTML=(!hasExpense?'⚠️ <b>Chưa có chi phí tháng này.</b> LN ròng có thể chưa đầy đủ. ':'✅ Đã có dữ liệu chi phí tháng này. ')+(!hasSettings?'⚠️ Chưa cấu hình thuế/mốc theo dõi.':'Thuế đang được hiển thị dưới dạng <b>ước tính quản trị</b>.')+(partial?'<br>⚠️ Mốc theo dõi đầy đủ bắt đầu từ <b>'+escapeHtmlV211(profitSettings.trackingStartDate)+'</b>, vì vậy số LN ròng của tháng đầu có thể chưa đủ chi phí trước mốc này.':'');}
+  const complete=document.getElementById('profitCompletenessBox');if(complete){const hasExpense=expenseRows.length>0,hasSettings=!!profitSettings.trackingStartDate||Number(profitSettings.taxRate1||0)>0||Number(profitSettings.taxRate2||0)>0||Number(profitSettings.taxProfitRate||0)>0||Number(profitSettings.taxManual||0)>0;const monthStart=reportMonthKey+'-01',partial=profitSettings.trackingStartDate&&profitSettings.trackingStartDate>monthStart;complete.innerHTML=(!hasExpense?'⚠️ <b>Chưa có chi phí trong tháng đã chọn.</b> LN ròng có thể chưa đầy đủ. ':'✅ Đã có dữ liệu chi phí trong tháng đã chọn. ')+(!hasSettings?'⚠️ Chưa cấu hình thuế/mốc theo dõi.':'Thuế đang được hiển thị dưới dạng <b>ước tính quản trị</b>.')+(partial?'<br>⚠️ Mốc theo dõi đầy đủ bắt đầu từ <b>'+escapeHtmlV211(profitSettings.trackingStartDate)+'</b>, vì vậy số LN ròng của tháng này có thể chưa đủ dữ liệu trước mốc.':'');}
   const insight=document.getElementById('profitInsight');if(insight){let t=`Cứ 100.000đ doanh thu thuần, cửa hàng tạo khoảng <b>${money(m.grossMargin*100000)}</b> lãi gộp và còn khoảng <b>${money(m.netMargin*100000)}</b> lợi nhuận sau thuế ước tính. `;if(isFinite(m.breakEven))t+=m.netRevenue>=m.breakEven?`Doanh thu hiện vượt hòa vốn khoảng <b>${money(m.safety)}</b>. `:`Cần thêm khoảng <b>${money(m.breakEven-m.netRevenue)}</b> để chạm hòa vốn. `;if(isFinite(m.targetRevenue)&&m.target>0)t+=`Muốn đạt <b>${money(m.target)}</b> LN sau thuế, doanh thu ước tính cần khoảng <b>${money(m.targetRevenue)}</b>.`;insight.innerHTML=t;}
+}
+
+function dateFromValueV23(value){
+  if(!value) return null;
+  if(value.toDate) return value.toDate();
+  const d=new Date(value);
+  return isNaN(d.getTime())?null:d;
+}
+function rowMonthKeyV23(row){
+  if(row&&/^\d{4}-\d{2}$/.test(row.monthKey||'')) return row.monthKey;
+  if(row&&/^\d{4}-\d{2}/.test(row.expenseDate||'')) return row.expenseDate.slice(0,7);
+  const d=dateFromValueV23(row&&row.createdAt);
+  return d?monthKeyV22(d):'';
+}
+function monthLabelV23(key){
+  const parts=String(key||'').split('-');
+  return parts.length===2?`Tháng ${Number(parts[1])}/${parts[0]}`:'Tháng chưa xác định';
+}
+function saleGrossProfitV23(sale){
+  return (sale.items||[]).reduce((sum,it)=>sum+((Number(it.price)-Number(it.cost||0))*Number(it.qty||0)),0);
+}
+function monthKeysV23(rows){
+  return [...new Set(rows.map(rowMonthKeyV23).filter(Boolean))].sort().reverse();
+}
+async function loadReportHistoryV23(force=false){
+  if(reportHistoryLoadingV23 || (reportHistoryLoadedV23&&!force)) return;
+  reportHistoryLoadingV23=true;
+  const status=document.getElementById('reportMonthStatus');
+  if(status) status.textContent='Đang tải lịch sử các tháng...';
+  try{
+    const [saleSnap,paymentSnap,expenseSnap]=await Promise.all([
+      storeRef.collection('sales').get(),
+      storeRef.collection('debtPayments').get(),
+      storeRef.collection('expenses').get()
+    ]);
+    allHistorySalesV23=saleSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(dateFromValueV23(b.createdAt)?.getTime()||0)-(dateFromValueV23(a.createdAt)?.getTime()||0));
+    allHistoryDebtPaymentsV23=paymentSnap.docs.map(d=>({id:d.id,...d.data()}));
+    allHistoryExpensesV23=expenseSnap.docs.map(d=>({id:d.id,...d.data()}));
+    reportHistoryLoadedV23=true;
+    populateReportMonthsV23();
+    renderReports();
+    renderMonthlyProfitHistoryV23();
+    if(document.getElementById('orderHistoryModal').classList.contains('show')) renderOrderHistoryV23();
+    if(status) status.textContent=`Đã tải ${allHistorySalesV23.length.toLocaleString('vi-VN')} đơn hàng trong ${monthKeysV23(allHistorySalesV23).length} tháng có giao dịch.`;
+  }catch(e){
+    if(status) status.textContent='Không tải được lịch sử: '+(e.message||e);
+    console.error('Lỗi tải lịch sử báo cáo:',e);
+  }finally{reportHistoryLoadingV23=false;}
+}
+function populateReportMonthsV23(){
+  const currentKey=monthKeyV22();
+  const reportKeys=[...new Set([currentKey,...monthKeysV23([...allHistorySalesV23,...allHistoryDebtPaymentsV23,...allHistoryExpensesV23])])].sort().reverse();
+  if(!selectedReportMonthV23||!reportKeys.includes(selectedReportMonthV23)) selectedReportMonthV23=reportKeys[0]||currentKey;
+  const reportSelect=document.getElementById('reportMonthSelect');
+  if(reportSelect){reportSelect.innerHTML=reportKeys.map(k=>`<option value="${k}">${monthLabelV23(k)}</option>`).join('');reportSelect.value=selectedReportMonthV23;}
+  const orderKeys=monthKeysV23(allHistorySalesV23),orderSelect=document.getElementById('orderHistoryMonth');
+  if(orderSelect){const old=orderSelect.value;orderSelect.innerHTML=orderKeys.length?orderKeys.map(k=>`<option value="${k}">${monthLabelV23(k)}</option>`).join(''):'<option value="">Chưa có đơn hàng</option>';orderSelect.value=orderKeys.includes(old)?old:(orderKeys[0]||'');}
+}
+function selectReportMonthV23(key){
+  if(!key) return;
+  selectedReportMonthV23=key;
+  renderReports();
+}
+async function openOrderHistoryV23(){
+  openModal('orderHistoryModal');
+  document.getElementById('orderHistoryList').innerHTML='<div class="empty-state">Đang tải lịch sử đơn hàng...</div>';
+  if(!reportHistoryLoadedV23) await loadReportHistoryV23();
+  else{populateReportMonthsV23();renderOrderHistoryV23();}
+}
+function renderOrderHistoryV23(){
+  const key=document.getElementById('orderHistoryMonth').value;
+  const keyword=(document.getElementById('orderHistorySearch').value||'').trim().toLowerCase();
+  let rows=allHistorySalesV23.filter(s=>rowMonthKeyV23(s)===key);
+  if(keyword) rows=rows.filter(s=>(s.customerName||'').toLowerCase().includes(keyword)||(s.items||[]).some(it=>(it.name||'').toLowerCase().includes(keyword)));
+  const total=rows.reduce((sum,s)=>sum+Number(s.total||0),0);
+  document.getElementById('orderHistorySummary').innerHTML=`<b>${monthLabelV23(key)}</b><br>${rows.length.toLocaleString('vi-VN')} đơn hàng · Tổng doanh thu <b class="mono">${money(total)}</b>${keyword?' · Kết quả đang được lọc':''}`;
+  document.getElementById('orderHistoryList').innerHTML=rows.length?rows.map(s=>{
+    const d=dateFromValueV23(s.createdAt),dateText=d?d.toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'Không rõ thời gian';
+    const itemText=(s.items||[]).slice(0,3).map(it=>escapeHtmlV211(it.name)+' × '+Number(it.qty||0).toLocaleString('vi-VN')).join(' · ');
+    return `<div class="prod-item" style="align-items:flex-start;"><div style="flex:1;min-width:0;"><div class="prod-name">${escapeHtmlV211(s.customerName||'Khách lẻ')}</div><div class="prod-meta">${dateText} · ${(s.items||[]).length} mặt hàng${s.isDebt?' · Ghi nợ':''}</div><div class="prod-meta" style="margin-top:3px;white-space:normal;">${itemText||'Không có chi tiết sản phẩm'}${(s.items||[]).length>3?' · ...':''}</div></div><div style="text-align:right;"><div class="mono">${money(s.total)}</div><div style="display:flex;gap:4px;margin-top:5px;justify-content:flex-end;"><button class="btn btn-sm btn-ghost" onclick="reprintSale('${s.id}')">🖨️ Xem</button><button class="btn btn-sm btn-ghost" onclick="openReturnModal('${s.id}')">↩️ Trả</button></div></div></div>`;
+  }).join(''):'<div class="empty-state">Không tìm thấy đơn hàng phù hợp trong tháng này.</div>';
+}
+function renderMonthlyProfitHistoryV23(){
+  const box=document.getElementById('monthlyProfitHistory');if(!box) return;
+  if(!reportHistoryLoadedV23){box.innerHTML='<div class="empty-state">Mở tab Báo cáo để tải dữ liệu theo tháng.</div>';return;}
+  const keys=monthKeysV23([...allHistorySalesV23,...allHistoryExpensesV23]);
+  box.innerHTML=keys.length?keys.map(key=>{
+    const monthSales=allHistorySalesV23.filter(s=>rowMonthKeyV23(s)===key),monthExpenses=allHistoryExpensesV23.filter(x=>rowMonthKeyV23(x)===key);
+    const revenue=monthSales.reduce((sum,s)=>sum+Number(s.total||0),0),gross=monthSales.reduce((sum,s)=>sum+saleGrossProfitV23(s),0),metrics=profitMetricsV22(revenue,gross,monthExpenses);
+    return `<div class="prod-item" onclick="selectReportMonthV23('${key}');document.getElementById('reportMonthSelect').value='${key}';window.scrollTo({top:0,behavior:'smooth'});" style="cursor:pointer;align-items:flex-start;"><div style="flex:1;"><div class="prod-name">${monthLabelV23(key)}</div><div class="prod-meta">${monthSales.length} đơn · Doanh thu ${money(revenue)} · Chi phí ${money(metrics.totalExpenses)}</div></div><div style="text-align:right;"><div class="prod-meta">LN sau thuế</div><div class="mono" style="font-weight:700;color:${metrics.afterTax>=0?'var(--leaf-500)':'var(--rust-500)'};">${money(metrics.afterTax)}</div></div></div>`;
+  }).join(''):'<div class="empty-state">Chưa có dữ liệu bán hàng hoặc chi phí theo tháng.</div>';
 }
 
 function renderReports(){
   renderStockAlerts();
-  const now=new Date();
+  const now=new Date(),currentKey=monthKeyV22(now),selectedKey=selectedReportMonthV23||currentKey;
+  selectedReportMonthV23=selectedKey;
   const startToday=new Date(now.getFullYear(),now.getMonth(),now.getDate());
   let todayRev=0, monthRev=0, todayCollected=0, monthCollected=0, todayProfit=0, monthProfit=0;
   const productSalesCount={};
@@ -3130,20 +3522,30 @@ function renderReports(){
     if(!s.createdAt||!s.createdAt.toDate) return;
     const d=s.createdAt.toDate();
     const cashPart=s.isDebt?(Number(s.paidAmount)||0):(Number(s.total)||0);
-    const profitPart=(s.items||[]).reduce((sum,it)=>sum+((Number(it.price)-Number(it.cost||0))*Number(it.qty||0)),0);
-    monthRev += Number(s.total)||0;
-    monthCollected += cashPart;
-    monthProfit += profitPart;
-    (s.items||[]).forEach(it=>{ productSalesCount[it.name]=(productSalesCount[it.name]||0)+(Number(it.baseQty)||Number(it.qty)||0); });
+    const profitPart=saleGrossProfitV23(s);
     if(d>=startToday){todayRev+=Number(s.total)||0;todayCollected+=cashPart;todayProfit+=profitPart;}
   });
   reportDebtPayments.forEach(p=>{
     if(!p.createdAt||!p.createdAt.toDate) return;
     const d=p.createdAt.toDate();
-    monthCollected += Number(p.amount)||0;
     if(d>=startToday) todayCollected += Number(p.amount)||0;
   });
+  const selectedSales=reportHistoryLoadedV23?allHistorySalesV23.filter(s=>rowMonthKeyV23(s)===selectedKey):(selectedKey===currentKey?reportSales:[]);
+  const selectedPayments=reportHistoryLoadedV23?allHistoryDebtPaymentsV23.filter(p=>rowMonthKeyV23(p)===selectedKey):(selectedKey===currentKey?reportDebtPayments:[]);
+  const selectedExpenses=reportHistoryLoadedV23?allHistoryExpensesV23.filter(x=>rowMonthKeyV23(x)===selectedKey):(selectedKey===currentKey?expenses:[]);
+  selectedSales.forEach(s=>{
+    const cashPart=s.isDebt?(Number(s.paidAmount)||0):(Number(s.total)||0);
+    monthRev+=Number(s.total)||0;monthCollected+=cashPart;monthProfit+=saleGrossProfitV23(s);
+    (s.items||[]).forEach(it=>{productSalesCount[it.name]=(productSalesCount[it.name]||0)+(Number(it.baseQty)||Number(it.qty)||0);});
+  });
+  selectedPayments.forEach(p=>monthCollected+=Number(p.amount)||0);
   const totalDebtNow=customers.reduce((sum,c)=>sum+(Number(c.debt)||0),0);
+  const label=monthLabelV23(selectedKey),isCurrent=selectedKey===currentKey;
+  document.getElementById('monthRevenueLabel').textContent=isCurrent?'Doanh thu tháng này':'Doanh thu '+label.toLowerCase();
+  document.getElementById('monthCollectedLabel').textContent=isCurrent?'Đã thu tháng này':'Đã thu '+label.toLowerCase();
+  document.getElementById('monthProfitLabel').textContent=isCurrent?'Lãi gộp tháng này':'Lãi gộp '+label.toLowerCase();
+  document.getElementById('profitAnalysisTitle').textContent='📈 Phân tích lợi nhuận '+(isCurrent?'tháng này':label.toLowerCase());
+  document.getElementById('topProductsTitle').textContent='Bán chạy nhất '+(isCurrent?'tháng này':label.toLowerCase());
   document.getElementById('statTodayRevenue').textContent=money(todayRev);
   document.getElementById('statMonthRevenue').textContent=money(monthRev);
   document.getElementById('statTodayCollected').textContent=money(todayCollected);
@@ -3151,12 +3553,12 @@ function renderReports(){
   document.getElementById('statTodayProfit').textContent=money(todayProfit);
   document.getElementById('statMonthProfit').textContent=money(monthProfit);
   document.getElementById('statCurrentDebt').textContent=money(totalDebtNow);
-  renderProfitAnalysisV22(monthRev,monthProfit);
+  renderProfitAnalysisV22(monthRev,monthProfit,selectedExpenses,selectedKey);
   const top=Object.entries(productSalesCount).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const topBox=document.getElementById('topProductsList');
-  topBox.innerHTML=top.length?top.map(([name,qty],i)=>`<div class="prod-item"><div style="width:26px;color:var(--wheat-400);font-weight:700;">${i+1}</div><div style="flex:1;">${name}</div><div class="mono">${Number(qty).toLocaleString('vi-VN')} ĐV gốc</div></div>`).join(''):'<div class="empty-state">Chưa có dữ liệu bán hàng tháng này.</div>';
+  topBox.innerHTML=top.length?top.map(([name,qty],i)=>`<div class="prod-item"><div style="width:26px;color:var(--wheat-400);font-weight:700;">${i+1}</div><div style="flex:1;">${escapeHtmlV211(name)}</div><div class="mono">${Number(qty).toLocaleString('vi-VN')} ĐV gốc</div></div>`).join(''):`<div class="empty-state">Chưa có dữ liệu bán hàng trong ${label.toLowerCase()}.</div>`;
   const recentBox=document.getElementById('recentSales');
-  recentBox.innerHTML=sales.slice(0,10).map(s=>`<div class="prod-item"><div style="flex:1;"><div class="prod-name">${s.customerName||'Khách lẻ'}</div><div class="prod-meta">${(s.items||[]).length} sản phẩm ${s.isDebt?'· Ghi nợ':''}</div></div><div style="text-align:right;"><div class="mono">${money(s.total)}</div><div style="display:flex;gap:4px;margin-top:4px;justify-content:flex-end;"><button class="btn btn-sm btn-ghost" onclick="reprintSale('${s.id}')">🖨️ In</button><button class="btn btn-sm btn-ghost" onclick="openReturnModal('${s.id}')">↩️ Trả</button></div></div></div>`).join('')||'<div class="empty-state">Chưa có hoá đơn nào.</div>';
+  recentBox.innerHTML=sales.slice(0,10).map(s=>{const d=dateFromValueV23(s.createdAt);return `<div class="prod-item"><div style="flex:1;"><div class="prod-name">${escapeHtmlV211(s.customerName||'Khách lẻ')}</div><div class="prod-meta">${d?d.toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})+' · ':''}${(s.items||[]).length} sản phẩm ${s.isDebt?'· Ghi nợ':''}</div></div><div style="text-align:right;"><div class="mono">${money(s.total)}</div><div style="display:flex;gap:4px;margin-top:4px;justify-content:flex-end;"><button class="btn btn-sm btn-ghost" onclick="reprintSale('${s.id}')">🖨️ Xem</button><button class="btn btn-sm btn-ghost" onclick="openReturnModal('${s.id}')">↩️ Trả</button></div></div></div>`;}).join('')||'<div class="empty-state">Chưa có hoá đơn nào.</div>';
 }
 </script>
 </body>
